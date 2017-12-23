@@ -9,10 +9,16 @@ package org.opendaylight.p4plugin.runtime.impl;
 
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.Futures;
+import io.grpc.StatusRuntimeException;
+import org.opendaylight.p4plugin.p4runtime.proto.Update;
+import org.opendaylight.p4plugin.p4runtime.proto.WriteRequest;
+import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
+import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
 import org.opendaylight.p4plugin.runtime.impl.table.profile.ActionProfileGroupOperator;
 import org.opendaylight.p4plugin.runtime.impl.table.profile.ActionProfileMemberOperator;
 import org.opendaylight.p4plugin.runtime.impl.table.entry.TableEntryOperator;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.*;
+import org.opendaylight.yangtools.yang.common.RpcError;
 import org.opendaylight.yangtools.yang.common.RpcResult;
 import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.slf4j.Logger;
@@ -23,20 +29,33 @@ import java.util.concurrent.Future;
 
 public class TableServiceProvider implements P4pluginRuntimeTableService {
     private static final Logger LOG = LoggerFactory.getLogger(TableServiceProvider.class);
+    private final DeviceManager manager =  DeviceManager.getInstance();
+
+    private <T> Future<RpcResult<T>> rpcFailed(String errMsg) {
+        return RpcResultBuilder.<T>failed()
+                .withError(RpcError.ErrorType.APPLICATION, errMsg)
+                .buildFuture();
+    }
 
     @Override
-    public Future<RpcResult<AddTableEntryOutput>> addTableEntry(AddTableEntryInput input) {
-        Preconditions.checkArgument(input != null, "Add table entry RPC input is null.");
-        AddTableEntryOutputBuilder builder = new AddTableEntryOutputBuilder();
-        String nodeId = input.getNodeId();
-        try {
-            boolean result = new TableEntryOperator(nodeId).add(input);
-            builder.setResult(result);
-        } catch (Exception e) {
-            builder.setResult(false);
-            e.printStackTrace();
+    public Future<RpcResult<java.lang.Void>> addTableEntry(AddTableEntryInput input) {
+        if (input == null) {
+            return rpcFailed("Input is null.");
         }
-        return Futures.immediateFuture(RpcResultBuilder.success(builder.build()).build());
+
+        String nodeId = input.getNid();
+        P4Device device = manager.findConfiguredDevice(nodeId);
+
+        if (device == null) {
+            return rpcFailed(String.format("Cannot find node = %s.", nodeId));
+        }
+
+        try {
+            new TableEntryOperator(device).add(input);
+            return RpcResultBuilder.success((Void)null).buildFuture();
+        } catch (StatusRuntimeException e) {
+            return rpcFailed(e.getMessage());
+        }
     }
 
     @Override

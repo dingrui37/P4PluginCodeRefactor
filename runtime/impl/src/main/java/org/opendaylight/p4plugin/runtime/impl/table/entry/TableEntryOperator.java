@@ -7,31 +7,27 @@
  */
 package org.opendaylight.p4plugin.runtime.impl.table.entry;
 
+import io.grpc.StatusRuntimeException;
 import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
 import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
 import org.opendaylight.p4plugin.p4runtime.proto.*;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.EntryKey;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.TableEntry;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.TableEntryKey;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 public class TableEntryOperator {
-    private String nodeId;
+    private P4Device device;
 
-    public TableEntryOperator(String nodeId) {
-        this.nodeId = nodeId;
+    public TableEntryOperator(P4Device device) {
+        this.device = device;
     }
 
-    private P4Device getDevice(String nodeId) {
-        return DeviceManager.getInstance().findConfiguredDevice(nodeId);
-    }
-
-    public boolean add(TableEntry inputEntry) {
-        org.opendaylight.p4plugin.p4runtime.proto.TableEntry tableEntry =
-                getDevice(nodeId).toMessage(inputEntry);
-        return operate(tableEntry, Update.Type.INSERT);
+    public void add(TableEntry inputEntry) {
+        org.opendaylight.p4plugin.p4runtime.proto.TableEntry tableEntry = device.toMessage(inputEntry);
+        operate(tableEntry, Update.Type.INSERT);
     }
 
     public boolean modify(TableEntry inputEntry) {
@@ -40,7 +36,7 @@ public class TableEntryOperator {
         return operate(tableEntry, Update.Type.MODIFY);
     }
 
-    public boolean delete(EntryKey key) {
+    public boolean delete(TableEntryKey key) {
         org.opendaylight.p4plugin.p4runtime.proto.TableEntry tableEntry =
                 getDevice(nodeId).toMessage(key);
         return operate(tableEntry, Update.Type.DELETE);
@@ -73,8 +69,7 @@ public class TableEntryOperator {
         return result;
     }
 
-    private boolean operate(org.opendaylight.p4plugin.p4runtime.proto.TableEntry entry, Update.Type type) {
-        P4Device device = getDevice(nodeId);
+    private void operate(org.opendaylight.p4plugin.p4runtime.proto.TableEntry entry, Update.Type type) {
         WriteRequest.Builder requestBuilder = WriteRequest.newBuilder();
         Update.Builder updateBuilder = Update.newBuilder();
         Entity.Builder entityBuilder = Entity.newBuilder();
@@ -83,6 +78,6 @@ public class TableEntryOperator {
         updateBuilder.setEntity(entityBuilder);
         requestBuilder.setDeviceId(device.getDeviceId());
         requestBuilder.addUpdates(updateBuilder);
-        return device.write(requestBuilder.build()) != null;
+        device.write(requestBuilder.build());
     }
 }

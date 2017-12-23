@@ -1,0 +1,56 @@
+module p4plugin-runtime-types {
+    yang-version 1;
+    namespace "urn:opendaylight:p4plugin:runtime:types";
+    prefix "types";
+
+    organization
+        "ZTE corporation";
+
+    contact
+        "ding.rui@zte.com.cn";
+
+    description
+        "This module contains a set of type definitions.";
+
+    revision "2017-08-08" {
+        description "Initial revision.";
+    }
+
+    import ietf-inet-types {
+        prefix "inet";
+        revision-date 2013-07-15;
+    }
+
+    typedef param-value {
+        type union {
+            type inet:ipv4-address;
+            type mac-address;
+            type uint64;
+        }
+    }
+
+    typedef match-value {
+        type union {
+            type inet:ipv4-address;
+            type mac-address;
+            type uint64;
+        }
+    }
+
+    typedef match-value-mask {
+        type union {
+            type inet:ipv4-address;
+            type mac-address;
+            type uint64;
+        }
+    }
+
+    typedef mac-address {
+        type string {
+            pattern '[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}';
+        }
+
+        description
+          "An IEEE 802 MAC address";
+    }
+}

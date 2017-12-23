@@ -28,7 +28,7 @@ module p4plugin-runtime-packet {
     }
 
     notification p4-packet-received {
-        uses device:node;
+        uses device:node-id;
         leaf payload {
             type binary;
         }
@@ -36,7 +36,7 @@ module p4plugin-runtime-packet {
 
     rpc p4-transmit-packet {
         input {
-            uses device:node;
+            uses device:node-id;
             leaf payload {
                 type binary;
             }

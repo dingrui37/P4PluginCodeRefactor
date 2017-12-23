@@ -17,7 +17,6 @@ module p4plugin-runtime-cluster {
         description "Initial revision.";
     }
 
-
     rpc set-election-id {
         input {
             leaf high {

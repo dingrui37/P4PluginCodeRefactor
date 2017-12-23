@@ -54,11 +54,11 @@ public class P4RuntimeStub implements ElectionIdObserver {
         return electionId;
     }
 
-    private P4RuntimeGrpc.P4RuntimeBlockingStub getBlockingStub() {
+    public P4RuntimeGrpc.P4RuntimeBlockingStub getBlockingStub() {
         return blockingStub;
     }
 
-    private P4RuntimeGrpc.P4RuntimeStub getAsyncStub() {
+    public P4RuntimeGrpc.P4RuntimeStub getAsyncStub() {
         return asyncStub;
     }
 

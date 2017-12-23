@@ -27,12 +27,6 @@ module p4plugin-runtime-device {
         revision-date 2017-08-08;
     }
 
-    grouping node {
-        leaf node-id {
-            type string;
-        }
-    }
-
     grouping grpc-server-address {
         leaf ip {
             type inet:ipv4-address;
@@ -43,75 +37,95 @@ module p4plugin-runtime-device {
         }
     }
 
-    grouping logic-device-id {
-        leaf device-id {
+    grouping node-id {
+        leaf nid {
+            type string;
+        }
+    }
+
+    grouping device-id {
+        leaf did {
             type uint64;
         }
     }
 
-    grouping device-config {
-        leaf config-file {
+    grouping target {
+        uses device-id;
+        uses grpc-server-address;
+    }
+
+    grouping dataplane-config {
+        leaf config-file-path {
             type string;
         }
 
-        leaf runtime-file {
+        leaf runtime-file-path {
             type string;
         }
     }
 
-    grouping device-identifier {
-        uses node;
-        uses grpc-server-address;
-        uses logic-device-id;
-        uses device-config;
+    grouping device {
+        uses node-id;
+        uses target;
+        uses dataplane-config;
     }
 
     rpc add-node {
         input {
-            uses device-identifier;
-        }
-
-        output {
-            uses common:rpc-result;
+            uses device;
         }
     }
 
     rpc remove-node {
         input {
-            uses node;
-        }
-
-        output {
-            uses common:rpc-result;
+            uses node-id;
         }
     }
 
     rpc query-nodes {
         output {
-            uses common:rpc-result;
-            leaf-list node {
+            leaf-list nodes {
                 type string;
+            }
+        }
+    }
+
+    rpc query-node {
+        input {
+            uses node-id;
+        }
+
+        output {
+            leaf exist-status {
+                type boolean;
+            }
+        }
+    }
+
+    rpc connect-to-node {
+        input {
+            uses node-id;
+        }
+
+        output {
+            leaf connect-status {
+                type boolean;
             }
         }
     }
 
     rpc set-pipeline-config {
         input {
-            uses node;
-        }
-
-        output {
-            uses common:rpc-result;
+            uses node-id;
         }
     }
 
     rpc get-pipeline-config {
         input {
-            uses node;
+            uses node-id;
         }
 
         output {
-            uses common:rpc-result;
             leaf p4-info {
                 type string;
             }

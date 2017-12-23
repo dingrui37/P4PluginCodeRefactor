@@ -107,6 +107,9 @@ public class P4Device  {
     private State state = State.Unknown;
     private P4Device() {}
 
+    public P4RuntimeStub getRuntimeStub() {
+        return stub;
+    }
     public int getTableId(String tableName) {
         return info.getTableId(tableName);
     }
@@ -248,14 +251,9 @@ public class P4Device  {
     }
 
     public WriteResponse write(WriteRequest request) {
-        WriteResponse response;
-        try {
-            response = stub.write(request);
-            return response;
-        } catch (StatusRuntimeException e) {
-            LOG.info("Write RPC failed: status = {}, reason = {}.", e.getStatus(), e.getMessage());
-        }
-        return null;
+        WriteResponse response = stub.write(request);
+
+        return
     }
 
     public Iterator<ReadResponse> read(ReadRequest request) {
