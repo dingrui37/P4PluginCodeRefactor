@@ -34,14 +34,10 @@ public class DeviceManager {
     }
 
     public boolean isNodeExist(String nodeId) {
-        Optional<String> keyContainer = devices.keySet()
-                .stream()
-                .filter(k -> k.equals(nodeId))
-                .findFirst();
-        return keyContainer.isPresent();
+        return devices.keySet().contains(nodeId);
     }
 
-    private boolean isDeviceExist(String ip, Integer port, Long deviceId) {
+    public boolean isTargetExist(String ip, Integer port, Long deviceId) {
         Optional<String> keyContainer = devices.keySet()
                 .stream()
                 .filter(k -> devices.get(k).getDeviceId().equals(deviceId)
@@ -51,23 +47,15 @@ public class DeviceManager {
         return keyContainer.isPresent();
     }
 
-    private boolean isDuplicateDevice(String nodeId, String ip, Integer port, Long deviceId) {
-        return isNodeExist(nodeId) && isDeviceExist(ip, port, deviceId);
+    public boolean isDeviceExist(String nodeId, String ip, Integer port, Long deviceId) {
+        return isNodeExist(nodeId) && isTargetExist(ip, port, deviceId);
     }
 
-    public P4Device findDevice(String nodeId) {
-        P4Device device = null;
-        Optional<String> keyContainer = devices.keySet()
-                .stream()
-                .filter(k->k.equals(nodeId))
-                .findFirst();
-        if (keyContainer.isPresent()) {
-            device = devices.get(nodeId);
-        }
-        return device;
+    public Optional<P4Device> findDevice(String nodeId) {
+        return Optional.ofNullable(devices.get(nodeId));
     }
 
-    private P4Device newDevice(String nodeId, Long deviceId, String ip, Integer port,
+    public P4Device newDevice(String nodeId, Long deviceId, String ip, Integer port,
                                String runtimeFile, String configFile) throws IOException {
         P4Info p4Info = Utils.parseRuntimeInfo(runtimeFile);
         ByteString config = Utils.parseDeviceConfigInfo(configFile);
@@ -81,50 +69,52 @@ public class DeviceManager {
         return builder.build();
     }
 
-    public P4Device addDevice(String nodeId, Long deviceId, String ip, Integer port,
-                              String runtimeFile, String configFile) throws IOException {
-        Preconditions.checkArgument(runtimeFile != null, "Runtime file path is null.");
-        Preconditions.checkArgument(configFile != null, "Config file path is null.");
-        String description = String.format("%s:%d:%s:%d", nodeId, deviceId, ip, port);
-
-        if (isDuplicateDevice(nodeId, ip, port, deviceId)) {
-            LOG.info("Duplicate device = {}.", description);
-            return findDevice(nodeId);
-        }
-
-        if (isNodeExist(nodeId) || isDeviceExist(ip, port, deviceId)) {
-            LOG.info("Device = {} node or device is already existed.", description);
-            return null;
-        }
-
-        P4Device device = newDevice(nodeId, deviceId, ip, port, runtimeFile, configFile);
-        if (device.connectToDevice()) {
-            device.setDeviceState(P4Device.State.Connected);
-            devices.put(nodeId, device);
-            LOG.info("Add device = {} success.", description);
-            return device;
-        }
-
-        LOG.info("Connect to device = {} failed.", description);
-        return null;
-    }
+//    public P4Device addDevice(String nodeId, Long deviceId, String ip, Integer port,
+//                              String runtimeFile, String configFile) throws IOException {
+//        Preconditions.checkArgument(runtimeFile != null, "Runtime file path is null.");
+//        Preconditions.checkArgument(configFile != null, "Config file path is null.");
+//        String description = String.format("%s:%d:%s:%d", nodeId, deviceId, ip, port);
+//
+//        if (isDuplicateDevice(nodeId, ip, port, deviceId)) {
+//            LOG.info("Duplicate device = {}.", description);
+//            return findDevice(nodeId);
+//        }
+//
+//        if (isNodeExist(nodeId) || isDeviceExist(ip, port, deviceId)) {
+//            LOG.info("Device = {} node or device is already existed.", description);
+//            return null;
+//        }
+//
+//        P4Device device = newDevice(nodeId, deviceId, ip, port, runtimeFile, configFile);
+//        if (device.connectToDevice()) {
+//            device.setDeviceState(P4Device.State.Connected);
+//            devices.put(nodeId, device);
+//            LOG.info("Add device = {} success.", description);
+//            return device;
+//        }
+//
+//        LOG.info("Connect to device = {} failed.", description);
+//        return null;
+//    }
 
     public void removeDevice(String nodeId) {
-        P4Device device = findDevice(nodeId);
-        if (device != null) {
+        Optional<P4Device> optional = findDevice(nodeId);
+        optional.ifPresent((device)->{
             device.shutdown();
             devices.remove(nodeId);
             LOG.info("Device = {} removed.", device.getDescription());
-        }
+        });
     }
 
-    public P4Device findConfiguredDevice(String nodeId) {
-        P4Device device = findDevice(nodeId);
-        if (device != null && device.isConfigured()) {
-            return device;
+    public Optional<P4Device> findConfiguredDevice(String nodeId) {
+        Optional<P4Device> optional = findDevice(nodeId);
+
+        if ((optional.isPresent()) && (optional.get().isConfigured())) {
+            return optional;
+        } else {
+            LOG.info("Cannot find a configured device, node id = {}", nodeId);
+            return Optional.empty();
         }
-        LOG.info("Cannot find a configured device, node id = {}", nodeId);
-        return null;
     }
 
     public List<String> queryNodes() {

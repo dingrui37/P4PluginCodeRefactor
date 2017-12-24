@@ -31,6 +31,10 @@ public class TableServiceProvider implements P4pluginRuntimeTableService {
     private static final Logger LOG = LoggerFactory.getLogger(TableServiceProvider.class);
     private final DeviceManager manager =  DeviceManager.getInstance();
 
+    private <T> Future<RpcResult<T>> rpcSuccess(T result) {
+        return RpcResultBuilder.success(result).buildFuture();
+    }
+
     private <T> Future<RpcResult<T>> rpcFailed(String errMsg) {
         return RpcResultBuilder.<T>failed()
                 .withError(RpcError.ErrorType.APPLICATION, errMsg)
@@ -39,19 +43,17 @@ public class TableServiceProvider implements P4pluginRuntimeTableService {
 
     @Override
     public Future<RpcResult<java.lang.Void>> addTableEntry(AddTableEntryInput input) {
-        if (input == null) {
-            return rpcFailed("Input is null.");
-        }
-
         String nodeId = input.getNid();
         P4Device device = manager.findConfiguredDevice(nodeId);
 
         if (device == null) {
-            return rpcFailed(String.format("Cannot find node = %s.", nodeId));
+            return rpcFailed(String.format("Cannot find device, node = %s.", nodeId));
         }
 
         try {
             new TableEntryOperator(device).add(input);
+            WriteRequest request;
+            device.getRuntimeStub().getBlockingStub().write(request);
             return RpcResultBuilder.success((Void)null).buildFuture();
         } catch (StatusRuntimeException e) {
             return rpcFailed(e.getMessage());

@@ -21,10 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Iterator;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 /**
- * P4 runtime stub, including blocking and async stubs, electionId and etc. In addition,
+ * P4RuntimeStub contains a blocking and an async stubs, electionId and etc. In addition,
  * it encapsulates various methods for the upper layers.
  */
 public class P4RuntimeStub implements ElectionIdObserver {
@@ -36,6 +37,10 @@ public class P4RuntimeStub implements ElectionIdObserver {
     private ElectionId electionId;
 
     public P4RuntimeStub(String nodeId, Long deviceId, String ip, Integer port) {
+        init(nodeId, deviceId, ip, port);
+    }
+
+    private void init(String nodeId, Long deviceId, String ip, Integer port) {
         runtimeChannel = FlyweightFactory.getInstance().getChannel(ip, port);
         blockingStub = P4RuntimeGrpc.newBlockingStub(runtimeChannel.getManagedChannel());
         asyncStub = P4RuntimeGrpc.newStub(runtimeChannel.getManagedChannel());
@@ -47,7 +52,7 @@ public class P4RuntimeStub implements ElectionIdObserver {
     @Override
     public void update(ElectionId electionId) {
         this.electionId = electionId;
-        sendMasterArbitration();
+        streamChannel.sendMasterArbitration(electionId);
     }
 
     public ElectionId getElectionId() {
@@ -94,12 +99,6 @@ public class P4RuntimeStub implements ElectionIdObserver {
         streamChannel.transmitPacket(payload);
     }
 
-    /**
-     * Send master arbitration update message.
-     */
-    public void sendMasterArbitration() {
-        streamChannel.sendMasterArbitration(electionId);
-    }
 
     public void shutdown() {
         ElectionIdGenerator.getInstance().deleteObserver(this);
@@ -166,7 +165,7 @@ public class P4RuntimeStub implements ElectionIdObserver {
                 case PACKET: {
                     P4PacketReceivedBuilder builder = new P4PacketReceivedBuilder();
                     byte[] payload = response.getPacket().getPayload().toByteArray();
-                    builder.setNodeId(nodeId);
+                    builder.setNid(nodeId);
                     builder.setPayload(payload);
                     NotificationServiceProvider.getInstance().notify(builder.build());
                     //For debug

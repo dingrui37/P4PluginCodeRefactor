@@ -7,7 +7,9 @@
  */
 package org.opendaylight.p4plugin.runtime.impl;
 
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.TextFormat;
+import io.grpc.StatusRuntimeException;
 import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
 import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.P4pluginRuntimeDeviceService;
@@ -19,125 +21,103 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.concurrent.Future;
+import java.util.Optional;
+import java.util.concurrent.*;
 
 public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
     private static final Logger LOG = LoggerFactory.getLogger(DeviceServiceProvider.class);
     private final DeviceManager manager =  DeviceManager.getInstance();
 
-    private <T> Future<RpcResult<T>> rpcFailed(String errMsg) {
-        return RpcResultBuilder.<T>failed()
-                .withError(RpcError.ErrorType.APPLICATION, errMsg)
-                .buildFuture();
-    }
-
     @Override
-    public Future<RpcResult<java.lang.Void>> addNode(AddNodeInput input) {
-        if (input == null) {
-            return rpcFailed("Input is null.");
-        }
-
+    public Future<RpcResult<java.lang.Void>> addDevice(AddDeviceInput input) {
         String nodeId = input.getNid();
         String ip = input.getIp().getValue();
         Integer port = input.getPort().getValue();
         Long deviceId = input.getDid().longValue();
         String runtimeFile = input.getRuntimeFilePath();
         String configFile = input.getConfigFilePath();
-
+        SettableFuture<RpcResult<java.lang.Void>> future = SettableFuture.create();
         try {
-            manager.addDevice(nodeId, deviceId, ip, port, runtimeFile, configFile);
-            return RpcResultBuilder.success((Void)null).buildFuture();
+            manager.newDevice(nodeId, deviceId, ip, port, runtimeFile, configFile);
+            future.set(RpcResultBuilder.success((Void)null).build());
         } catch (IllegalArgumentException | IOException e) {
-            return rpcFailed(e.getMessage());
+            future.set(RpcResultBuilder.<Void>failed()
+                    .withError(RpcError.ErrorType.APPLICATION, e.getMessage()).build());
         }
+        return future;
     }
 
     @Override
-    public Future<RpcResult<java.lang.Void>> removeNode(RemoveNodeInput input) {
-        if (input == null) {
-            return rpcFailed("Input is null.");
-        }
-
+    public Future<RpcResult<java.lang.Void>> removeDevice(RemoveDeviceInput input) {
         manager.removeDevice(input.getNid());
         return RpcResultBuilder.success((Void)null).buildFuture();
     }
 
     @Override
-    public Future<RpcResult<ConnectToNodeOutput>> connectToNode(ConnectToNodeInput input) {
-        if (input == null) {
-            return rpcFailed("Input is null.");
-        }
-
+    public Future<RpcResult<ConnectToDeviceOutput>> connectToDevice(ConnectToDeviceInput input) {
         String nodeId = input.getNid();
-        P4Device device = manager.findDevice(nodeId);
-        if (device == null) {
-            return rpcFailed(String.format("Cannot find node = %s.", nodeId));
+        Optional<P4Device> optional= manager.findDevice(nodeId);
+        SettableFuture<RpcResult<ConnectToDeviceOutput>> future = SettableFuture.create();
+        if (optional.isPresent()) {
+            new Thread(() -> {
+                ConnectToDeviceOutputBuilder outputBuilder = new ConnectToDeviceOutputBuilder();
+                Boolean status = optional.get().connectToDevice();
+                future.set(RpcResultBuilder.success(outputBuilder.setConnectStatus(status)).build());
+            }).start();
+        } else {
+            future.set(RpcResultBuilder.<ConnectToDeviceOutput>failed()
+                    .withError(RpcError.ErrorType.APPLICATION, "Cannot find device.").build());
         }
-
-        ConnectToNodeOutputBuilder outputBuilder = new ConnectToNodeOutputBuilder();
-        boolean result = manager.findDevice(nodeId).connectToDevice();
-        return RpcResultBuilder.success(outputBuilder.setConnectStatus(result)).buildFuture();
+        return future;
     }
 
     @Override
     public Future<RpcResult<java.lang.Void>> setPipelineConfig(SetPipelineConfigInput input) {
-        if (input == null) {
-            return rpcFailed("Input is null.");
-        }
-
         String nodeId = input.getNid();
-        P4Device device = manager.findDevice(nodeId);
-
-        if (device == null) {
-            return rpcFailed(String.format("Cannot find node = %s.", nodeId));
+        Optional<P4Device> optional = manager.findDevice(nodeId);
+        SettableFuture<RpcResult<Void>> future = SettableFuture.create();
+        if (optional.isPresent()) {
+            try {
+                optional.get().getRuntimeStub().getBlockingStub().write();
+                future.set(RpcResultBuilder.success((Void)null).build());
+            } catch (StatusRuntimeException e) {
+                future.set(RpcResultBuilder.<Void>failed()
+                        .withError(RpcError.ErrorType.APPLICATION,e.getMessage()).build());
+            }
+        } else {
+            future.set(RpcResultBuilder.<Void>failed()
+                    .withError(RpcError.ErrorType.APPLICATION, "Cannot find device").build());
         }
-
-        try {
-            manager.findDevice(nodeId).setPipelineConfig();
-            return RpcResultBuilder.success((Void) null).buildFuture();
-        } catch (Exception e) { //TODO
-            return rpcFailed(e.getMessage());
-        }
+        return future;
     }
 
     @Override
     public Future<RpcResult<GetPipelineConfigOutput>> getPipelineConfig(GetPipelineConfigInput input) {
-        if (input == null) {
-            return rpcFailed("Input is null.");
-        }
-
         String nodeId = input.getNid();
-        P4Device device = manager.findConfiguredDevice(nodeId);
-        GetPipelineConfigOutputBuilder outputBuilder = new GetPipelineConfigOutputBuilder();
-
-        if (device == null) {
-            return rpcFailed(String.format("Cannot find node = %s.", nodeId));
+        Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
+        SettableFuture<RpcResult<GetPipelineConfigOutput>> future = SettableFuture.create();
+        if (optional.isPresent()) {
+            GetPipelineConfigOutputBuilder outputBuilder = new GetPipelineConfigOutputBuilder();
+            try {
+                String result = TextFormat.printToString(optional.get()
+                        .getPipelineConfig().getConfigs(0).getP4Info());
+                outputBuilder.setP4Info(result);
+                future.set(RpcResultBuilder.success(outputBuilder.build()).build());
+            } catch (StatusRuntimeException e) {
+                future.set(RpcResultBuilder.<GetPipelineConfigOutput>failed()
+                        .withError(RpcError.ErrorType.APPLICATION, e.getMessage()).build());
+            }
+        } else {
+            future.set(RpcResultBuilder.<GetPipelineConfigOutput>failed()
+                    .withError(RpcError.ErrorType.APPLICATION, "Cannot find device").build());
         }
-
-        try {
-            String result = TextFormat.printToString(device.getPipelineConfig().getConfigs(0).getP4Info());
-            outputBuilder.setP4Info(result);
-            return RpcResultBuilder.success(outputBuilder.build()).buildFuture();
-        } catch (IllegalStateException e) {
-            return rpcFailed(e.getMessage());
-        }
+        return future;
     }
 
     @Override
-    public Future<RpcResult<QueryNodesOutput>> queryNodes() {
-        QueryNodesOutputBuilder outputBuilder = new QueryNodesOutputBuilder();
+    public Future<RpcResult<QueryDevicesOutput>> queryDevices() {
+        QueryDevicesOutputBuilder outputBuilder = new QueryDevicesOutputBuilder();
         outputBuilder.setNodes(manager.queryNodes());
-        return RpcResultBuilder.success(outputBuilder.build()).buildFuture();
-    }
-
-    @Override
-    public Future<RpcResult<QueryNodeOutput>> queryNode(QueryNodeInput input) {
-        if (input == null) {
-            return rpcFailed("Input is null.");
-        }
-
-        QueryNodeOutputBuilder outputBuilder = new QueryNodeOutputBuilder();
-        outputBuilder.setExistStatus(manager.isNodeExist(input.getNid()));
         return RpcResultBuilder.success(outputBuilder.build()).buildFuture();
     }
 }

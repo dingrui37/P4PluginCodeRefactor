@@ -70,19 +70,19 @@ module p4plugin-runtime-device {
         uses dataplane-config;
     }
 
-    rpc add-node {
+    rpc add-device {
         input {
             uses device;
         }
     }
 
-    rpc remove-node {
+    rpc remove-device {
         input {
             uses node-id;
         }
     }
 
-    rpc query-nodes {
+    rpc query-devices {
         output {
             leaf-list nodes {
                 type string;
@@ -90,19 +90,7 @@ module p4plugin-runtime-device {
         }
     }
 
-    rpc query-node {
-        input {
-            uses node-id;
-        }
-
-        output {
-            leaf exist-status {
-                type boolean;
-            }
-        }
-    }
-
-    rpc connect-to-node {
+    rpc connect-to-device {
         input {
             uses node-id;
         }
