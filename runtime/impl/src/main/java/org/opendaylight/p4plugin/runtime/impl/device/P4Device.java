@@ -8,7 +8,7 @@
 package org.opendaylight.p4plugin.runtime.impl.device;
 
 import com.google.protobuf.ByteString;
-import io.grpc.StatusRuntimeException;
+import org.opendaylight.p4plugin.p4info.proto.Table;
 import org.opendaylight.p4plugin.runtime.impl.channel.P4RuntimeStub;
 import org.opendaylight.p4plugin.runtime.impl.table.action.AbstractActionParser;
 import org.opendaylight.p4plugin.runtime.impl.table.action.DirectActionParser;
@@ -19,8 +19,6 @@ import org.opendaylight.p4plugin.runtime.impl.utils.Utils;
 import org.opendaylight.p4plugin.p4config.proto.P4DeviceConfig;
 import org.opendaylight.p4plugin.p4info.proto.P4Info;
 import org.opendaylight.p4plugin.p4runtime.proto.*;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.ActionProfileGroup;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.ActionProfileMember;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.TableEntry;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.table.entry.ActionType;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.table.entry.action.type.ACTIONPROFILEGROUP;
@@ -31,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The relationship between P4Device, P4RuntimeStub, P4RuntimeChannel and Stream channel
@@ -87,8 +86,8 @@ import java.util.List;
  */
 public class P4Device  {
     private static final Logger LOG = LoggerFactory.getLogger(P4Device.class);
-    private P4RuntimeStub stub;
-    private P4RuntimeInfo info;
+    private P4RuntimeStub runtimeStub;
+    private P4Info runtimeInfo;
     private ByteString deviceConfig;
     private String ip;
     private Integer port;
@@ -97,55 +96,164 @@ public class P4Device  {
     private State state = State.Unknown;
     private P4Device() {}
 
-    public P4RuntimeStub getRuntimeStub() {
-        return stub;
-    }
     public int getTableId(String tableName) {
-        return info.getTableId(tableName);
+        Optional<Table> optional = runtimeInfo.getTablesList()
+                .stream()
+                .filter(table -> table.getPreamble().getName().equals(tableName))
+                .findFirst();
+        return optional.orElseThrow(()-> new IllegalArgumentException("Invalid table name"))
+                .getPreamble().getId();
     }
 
     public String getTableName(int tableId) {
-        return info.getTableName(tableId);
+        Optional<org.opendaylight.p4plugin.p4info.proto.Table> optional = runtimeInfo.getTablesList()
+                .stream()
+                .filter(table -> table.getPreamble().getId() == tableId)
+                .findFirst();
+        return optional.orElseThrow(()-> new IllegalArgumentException("Invalid table id"))
+                .getPreamble().getName();
     }
 
     public int getMatchFieldId(String tableName, String matchFieldName) {
-        return info.getMatchFieldId(tableName, matchFieldName);
+        Optional<org.opendaylight.p4plugin.p4info.proto.Table> tableContainer = runtimeInfo.getTablesList()
+                .stream()
+                .filter(table -> table.getPreamble().getName().equals(tableName))
+                .findFirst();
+
+        Optional<org.opendaylight.p4plugin.p4info.proto.MatchField> matchFieldContainer =
+                tableContainer.orElseThrow(()-> new IllegalArgumentException("Invalid table name"))
+                        .getMatchFieldsList()
+                        .stream()
+                        .filter(matchField -> matchField.getName().equals(matchFieldName))
+                        .findFirst();
+
+        return matchFieldContainer.orElseThrow(()-> new IllegalArgumentException("Invalid match field name"))
+                .getId();
     }
 
     public String getMatchFieldName(int tableId, int matchFieldId) {
-        return info.getMatchFieldName(tableId, matchFieldId);
+        Optional<org.opendaylight.p4plugin.p4info.proto.Table> tableContainer = runtimeInfo.getTablesList()
+                .stream()
+                .filter(table -> table.getPreamble().getId() == tableId)
+                .findFirst();
+
+        Optional<org.opendaylight.p4plugin.p4info.proto.MatchField> matchFieldContainer =
+                tableContainer.orElseThrow(()-> new IllegalArgumentException("Invalid table id"))
+                        .getMatchFieldsList()
+                        .stream()
+                        .filter(matchField -> matchField.getId() == (matchFieldId))
+                        .findFirst();
+
+        return matchFieldContainer.orElseThrow(()-> new IllegalArgumentException("Invalid match field id"))
+                .getName();
     }
 
     public int getMatchFieldWidth(String tableName, String matchFieldName) {
-        return info.getMatchFieldWidth(tableName, matchFieldName);
+        Optional<org.opendaylight.p4plugin.p4info.proto.Table> tableContainer = runtimeInfo.getTablesList()
+                .stream()
+                .filter(table -> table.getPreamble().getName().equals(tableName))
+                .findFirst();
+
+        Optional<org.opendaylight.p4plugin.p4info.proto.MatchField> matchFieldContainer =
+                tableContainer.orElseThrow(()-> new IllegalArgumentException("Invalid table name"))
+                        .getMatchFieldsList()
+                        .stream()
+                        .filter(matchField -> matchField.getName().equals(matchFieldName))
+                        .findFirst();
+
+        return (matchFieldContainer.orElseThrow(()-> new IllegalArgumentException("Invalid match field name"))
+                .getBitwidth() + 7 ) / 8;
     }
 
     public int getActionId(String actionName) {
-        return info.getActionId(actionName);
+        Optional<org.opendaylight.p4plugin.p4info.proto.Action> optional = runtimeInfo.getActionsList()
+                .stream()
+                .filter(action -> action.getPreamble().getName().equals(actionName))
+                .findFirst();
+        return optional.orElseThrow(()-> new IllegalArgumentException("Invalid action name"))
+                .getPreamble().getId();
     }
 
     public String getActionName(int actionId) {
-        return info.getActionName(actionId);
+        Optional<org.opendaylight.p4plugin.p4info.proto.Action> optional = runtimeInfo.getActionsList()
+                .stream()
+                .filter(action -> action.getPreamble().getId() == actionId)
+                .findFirst();
+        return optional.orElseThrow(()-> new IllegalArgumentException("Invalid action id"))
+                .getPreamble().getName();
     }
 
     public int getParamId(String actionName, String paramName) {
-        return info.getParamId(actionName, paramName);
+        Optional<org.opendaylight.p4plugin.p4info.proto.Action> actionContainer = runtimeInfo.getActionsList()
+                .stream()
+                .filter(action -> action.getPreamble().getName().equals(actionName))
+                .findFirst();
+
+        Optional<org.opendaylight.p4plugin.p4info.proto.Action.Param> paramContainer =
+                actionContainer.orElseThrow(()-> new IllegalArgumentException("Invalid action name"))
+                        .getParamsList()
+                        .stream()
+                        .filter(param -> param.getName().equals(paramName))
+                        .findFirst();
+
+        return paramContainer.orElseThrow(()-> new IllegalArgumentException("Invalid param name"))
+                .getId();
     }
 
     public String getParamName(int actionId, int paramId) {
-        return info.getParamName(actionId, paramId);
+        Optional<org.opendaylight.p4plugin.p4info.proto.Action> actionContainer = runtimeInfo.getActionsList()
+                .stream()
+                .filter(action -> action.getPreamble().getId() == actionId)
+                .findFirst();
+
+        Optional<org.opendaylight.p4plugin.p4info.proto.Action.Param> paramContainer =
+                actionContainer.orElseThrow(()-> new IllegalArgumentException("Invalid action id"))
+                        .getParamsList()
+                        .stream()
+                        .filter(param -> param.getId() == paramId)
+                        .findFirst();
+
+        return paramContainer.orElseThrow(()-> new IllegalArgumentException("Invalid param id"))
+                .getName();
     }
 
     public int getParamWidth(String actionName, String paramName) {
-        return info.getParamWidth(actionName, paramName);
+        Optional<org.opendaylight.p4plugin.p4info.proto.Action> actionContainer = runtimeInfo.getActionsList()
+                .stream()
+                .filter(action -> action.getPreamble().getName().equals(actionName))
+                .findFirst();
+
+        Optional<org.opendaylight.p4plugin.p4info.proto.Action.Param> paramContainer =
+                actionContainer.orElseThrow(()-> new IllegalArgumentException("Invalid action name"))
+                        .getParamsList()
+                        .stream()
+                        .filter(param -> param.getName().equals(paramName))
+                        .findFirst();
+
+        return (paramContainer.orElseThrow(()-> new IllegalArgumentException("Invalid param name"))
+                .getBitwidth() + 7 ) / 8;
     }
 
     public int getActionProfileId(String actionProfileName) {
-        return info.getActionProfileId(actionProfileName);
+        Optional<org.opendaylight.p4plugin.p4info.proto.ActionProfile> optional = runtimeInfo.getActionProfilesList()
+                .stream()
+                .filter(actionProfile -> actionProfile.getPreamble().getName().equals(actionProfileName))
+                .findFirst();
+        return optional.orElseThrow(()-> new IllegalArgumentException("Invalid action profile name"))
+                .getPreamble().getId();
     }
 
     public String getActionProfileName(Integer actionProfileId) {
-        return info.getActionProfileName(actionProfileId);
+        Optional<org.opendaylight.p4plugin.p4info.proto.ActionProfile> optional = runtimeInfo.getActionProfilesList()
+                .stream()
+                .filter(actionProfile -> actionProfile.getPreamble().getId() == actionProfileId)
+                .findFirst();
+        return optional.orElseThrow(()-> new IllegalArgumentException("Invalid action profile id"))
+                .getPreamble().getName();
+    }
+
+    public P4RuntimeStub getRuntimeStub() {
+        return runtimeStub;
     }
 
     public Long getDeviceId() {
@@ -173,52 +281,36 @@ public class P4Device  {
     }
 
     public boolean isConfigured() {
-        return info != null
+        return runtimeInfo != null
             && deviceConfig != null
-            && state == State.Configured;
+            && getDeviceState() == State.Configured;
     }
 
     public boolean connectToDevice() {
-        return stub.connect();
-    }
-
-    public String getDescription() {
-        return nodeId + ":" + deviceId + ":" + ip + ":" + port + ":" +state;
+        return runtimeStub.connect();
     }
 
     public void shutdown() {
-        stub.shutdown();
+        runtimeStub.shutdown();
     }
 
     public SetForwardingPipelineConfigResponse setPipelineConfig() {
         ForwardingPipelineConfig.Builder configBuilder = ForwardingPipelineConfig.newBuilder();
         P4DeviceConfig.Builder p4DeviceConfigBuilder = P4DeviceConfig.newBuilder();
-        P4Info p4Info = info.getP4Info();
-        if (deviceConfig != null) {
-            p4DeviceConfigBuilder.setDeviceData(deviceConfig);
-        }
-        if (p4Info != null) {
-            configBuilder.setP4Info(p4Info);
-        }
+        p4DeviceConfigBuilder.setDeviceData(deviceConfig);
+        configBuilder.setP4Info(runtimeInfo);
+
         configBuilder.setP4DeviceConfig(p4DeviceConfigBuilder.build().toByteString());
         configBuilder.setDeviceId(deviceId);
         SetForwardingPipelineConfigRequest request = SetForwardingPipelineConfigRequest.newBuilder()
                 .setAction(SetForwardingPipelineConfigRequest.Action.VERIFY_AND_COMMIT)
                 .addConfigs(configBuilder)
                 .build();
+
         SetForwardingPipelineConfigResponse response;
-
-        try {
-            /* response is empty now */
-            response = stub.setPipelineConfig(request);
-            setDeviceState(State.Configured);
-            return response;
-        } catch (StatusRuntimeException e) {
-            LOG.info("Set pipeline config RPC failed: {}", e.getStatus());
-            e.printStackTrace();
-        }
-
-        return null;
+        response = runtimeStub.getBlockingStub().setForwardingPipelineConfig(request);
+        setDeviceState(State.Configured);
+        return response;
     }
 
     public GetForwardingPipelineConfigResponse getPipelineConfig() {
@@ -226,44 +318,26 @@ public class P4Device  {
                 .addDeviceIds(deviceId)
                 .build();
         GetForwardingPipelineConfigResponse response;
-
-        try {
-            /* response is empty now */
-            response = stub.getPipelineConfig(request);
-            return response;
-        } catch (StatusRuntimeException e) {
-            LOG.info("Get pipeline config RPC failed: status = {}, reason = {}.",
-                    e.getStatus(), e.getMessage());
-            e.printStackTrace();
-        }
-
-        return null;
+        response = runtimeStub.getBlockingStub().getForwardingPipelineConfig(request);
+        return response;
     }
 
     public WriteResponse write(WriteRequest request) {
-        WriteResponse response = stub.write(request);
-
-        return
+        WriteResponse response = runtimeStub.getBlockingStub().write(request);
+        return response;
     }
 
     public Iterator<ReadResponse> read(ReadRequest request) {
         Iterator<ReadResponse> responses;
-        try {
-            responses = stub.read(request);
-            return responses;
-        } catch (StatusRuntimeException e) {
-            LOG.info("Read RPC failed: status = {}, reason = {}.", e.getStatus(), e.getMessage());
-        }
-        return null;
-    }
-
-    public void sendMasterArbitration() {
-        stub.sendMasterArbitration();
+        responses = runtimeStub.getBlockingStub().read(request);
+        return responses;
     }
 
     public void transmitPacket(byte[] payload) {
-        stub.transmitPacket(payload);
+        runtimeStub.transmitPacket(payload);
     }
+
+
 
     private TableAction buildTableAction(ActionType actionType) {
         AbstractActionParser parser;
@@ -609,8 +683,8 @@ public class P4Device  {
             device.nodeId = nodeId_;
             device.ip = ip_;
             device.port = port_;
-            device.info = new P4RuntimeInfo(runtimeInfo_);
-            device.stub = new P4RuntimeStub(nodeId_, deviceId_, ip_, port_);
+            device.runtimeInfo = runtimeInfo_;
+            device.runtimeStub = new P4RuntimeStub(nodeId_, deviceId_, ip_, port_);
             return device;
         }
     }

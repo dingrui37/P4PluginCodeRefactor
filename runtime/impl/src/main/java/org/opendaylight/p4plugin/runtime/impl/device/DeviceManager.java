@@ -7,7 +7,6 @@
  */
 package org.opendaylight.p4plugin.runtime.impl.device;
 
-import com.google.common.base.Preconditions;
 import com.google.protobuf.ByteString;
 import org.opendaylight.p4plugin.runtime.impl.utils.Utils;
 import org.opendaylight.p4plugin.p4info.proto.P4Info;
@@ -20,14 +19,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Device manager is used to save the device info and provides the add/remove,
- * find, query and other methods, only one instance.
- */
 public class DeviceManager {
     private static final Logger LOG = LoggerFactory.getLogger(DeviceManager.class);
     private static DeviceManager singleton = new DeviceManager();
-    private ConcurrentHashMap<String, P4Device> devices = new ConcurrentHashMap<>(); //nodeId<->P4Device
+    private ConcurrentHashMap<String, P4Device> devices = new ConcurrentHashMap<>();
     private DeviceManager() {}
     public static DeviceManager getInstance() {
         return singleton;
@@ -55,8 +50,12 @@ public class DeviceManager {
         return Optional.ofNullable(devices.get(nodeId));
     }
 
-    public P4Device newDevice(String nodeId, Long deviceId, String ip, Integer port,
-                               String runtimeFile, String configFile) throws IOException {
+    public void addDevice(String nodeId, Long deviceId, String ip, Integer port,
+                          String runtimeFile, String configFile) throws IOException {
+        if (isDeviceExist(nodeId, ip, port, deviceId)) {
+            throw new IllegalArgumentException("Invalid param.");
+        }
+
         P4Info p4Info = Utils.parseRuntimeInfo(runtimeFile);
         ByteString config = Utils.parseDeviceConfigInfo(configFile);
         P4Device.Builder builder = P4Device.newBuilder()
@@ -66,43 +65,15 @@ public class DeviceManager {
                 .setDeviceConfig(config)
                 .setIp(ip)
                 .setPort(port);
-        return builder.build();
+        devices.put(nodeId, builder.build());
     }
-
-//    public P4Device addDevice(String nodeId, Long deviceId, String ip, Integer port,
-//                              String runtimeFile, String configFile) throws IOException {
-//        Preconditions.checkArgument(runtimeFile != null, "Runtime file path is null.");
-//        Preconditions.checkArgument(configFile != null, "Config file path is null.");
-//        String description = String.format("%s:%d:%s:%d", nodeId, deviceId, ip, port);
-//
-//        if (isDuplicateDevice(nodeId, ip, port, deviceId)) {
-//            LOG.info("Duplicate device = {}.", description);
-//            return findDevice(nodeId);
-//        }
-//
-//        if (isNodeExist(nodeId) || isDeviceExist(ip, port, deviceId)) {
-//            LOG.info("Device = {} node or device is already existed.", description);
-//            return null;
-//        }
-//
-//        P4Device device = newDevice(nodeId, deviceId, ip, port, runtimeFile, configFile);
-//        if (device.connectToDevice()) {
-//            device.setDeviceState(P4Device.State.Connected);
-//            devices.put(nodeId, device);
-//            LOG.info("Add device = {} success.", description);
-//            return device;
-//        }
-//
-//        LOG.info("Connect to device = {} failed.", description);
-//        return null;
-//    }
 
     public void removeDevice(String nodeId) {
         Optional<P4Device> optional = findDevice(nodeId);
         optional.ifPresent((device)->{
             device.shutdown();
             devices.remove(nodeId);
-            LOG.info("Device = {} removed.", device.getDescription());
+            LOG.info("Device = {} removed.", device.getNodeId());
         });
     }
 
@@ -121,7 +92,7 @@ public class DeviceManager {
         List<String> result = new ArrayList<>();
         devices.keySet().forEach(node->{
             P4Device device = devices.get(node);
-            result.add(device.getDescription());
+            result.add(device.getNodeId());
         });
         return result;
     }

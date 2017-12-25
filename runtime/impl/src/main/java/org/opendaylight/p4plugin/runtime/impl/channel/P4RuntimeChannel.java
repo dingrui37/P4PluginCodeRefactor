@@ -52,7 +52,8 @@ public class P4RuntimeChannel {
         try {
             channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
         }
     }
 }

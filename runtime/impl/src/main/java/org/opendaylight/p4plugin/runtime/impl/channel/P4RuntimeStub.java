@@ -19,9 +19,7 @@ import org.opendaylight.p4plugin.p4runtime.proto.*;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.packet.rev170808.P4PacketReceivedBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.Iterator;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -67,52 +65,28 @@ public class P4RuntimeStub implements ElectionIdObserver {
         return asyncStub;
     }
 
-    /**
-     * Open the bi-directional stream channel.
-     * @return The result of the stream channel connection.
-     */
     public boolean connect() {
         streamChannel.openStreamChannel();
         return streamChannel.getStreamChannelState();
     }
 
-    public SetForwardingPipelineConfigResponse setPipelineConfig(SetForwardingPipelineConfigRequest request) {
-        return getBlockingStub().setForwardingPipelineConfig(request);
-    }
-
-    public GetForwardingPipelineConfigResponse getPipelineConfig(GetForwardingPipelineConfigRequest request) {
-        return getBlockingStub().getForwardingPipelineConfig(request);
-    }
-
-    public WriteResponse write(WriteRequest request) {
-        return getBlockingStub().write(request);
-    }
-
-    public Iterator<ReadResponse> read(ReadRequest request) {
-        return getBlockingStub().read(request);
-    }
-
-    /**
-     * Send packet through stream channel, not support metadata now.
-     */
     public void transmitPacket(byte[] payload) {
         streamChannel.transmitPacket(payload);
     }
-
 
     public void shutdown() {
         ElectionIdGenerator.getInstance().deleteObserver(this);
         streamChannel.shutdown();
     }
 
+    /**
+     * There is a single StreamChannel bi-directional stream per (P4RuntimeStub, Switch)
+     * pair. The first thing a controller needs to do when it opens the stream is send a
+     * MasterArbitrationUpdate message, advertising its election id. This message includes
+     * a device id. All subsequent arbitration & packet IO messages on that stream will be
+     * for that device.
+     */
     public class StreamChannel {
-        /**
-         * There is a single StreamChannel bi-directional stream per (P4RuntimeStub, Switch)
-         * pair. The first thing a controller needs to do when it opens the stream is send a
-         * MasterArbitrationUpdate message, advertising its election id. This message includes
-         * a device id. All subsequent arbitration & packet IO messages on that stream will be
-         * for that device.
-         */
         private Long deviceId;
         private String nodeId;
         private StreamObserver<StreamMessageRequest> observer;
@@ -123,14 +97,16 @@ public class P4RuntimeStub implements ElectionIdObserver {
             this.nodeId = nodeId;
         }
 
-        boolean getStreamChannelState() {
-            boolean state = true;
+        public boolean getStreamChannelState() {
+            boolean state;
+
             try {
                 state = !countDownLatch.await(1, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
-                LOG.info("Get stream channel state exception.");
-                e.printStackTrace();
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
             }
+
             return state;
         }
 
@@ -157,10 +133,10 @@ public class P4RuntimeStub implements ElectionIdObserver {
             requestBuilder.setPacket(packetOutBuilder);
             observer.onNext(requestBuilder.build());
             //For debug
-            LOG.info("Transmit packet = {} to node = {}.", Utils.bytesToHexString(payload), nodeId);
+            LOG.info("Transmit packet = {} to device = {}.", Utils.bytesToHexString(payload), nodeId);
         }
 
-        public void onPacketReceived(StreamMessageResponse response) {
+        private void onPacketReceived(StreamMessageResponse response) {
             switch(response.getUpdateCase()) {
                 case PACKET: {
                     P4PacketReceivedBuilder builder = new P4PacketReceivedBuilder();
@@ -169,16 +145,16 @@ public class P4RuntimeStub implements ElectionIdObserver {
                     builder.setPayload(payload);
                     NotificationServiceProvider.getInstance().notify(builder.build());
                     //For debug
-                    LOG.info("Receive packet from node = {}, body = {}.", nodeId, Utils.bytesToHexString(payload));
+                    LOG.info("Receive packet from device = {}, body = {}.", nodeId, Utils.bytesToHexString(payload));
                     break;
                 }
-                case ARBITRATION:
-                case UPDATE_NOT_SET:
+                case ARBITRATION:break;
+                case UPDATE_NOT_SET:break;
                 default:break;
             }
         }
 
-        public void onStreamChannelError(Throwable t) {
+        private void onStreamChannelError(Throwable t) {
             runtimeChannel.removeStub(P4RuntimeStub.this);
             DeviceManager.getInstance().removeDevice(nodeId);
             countDownLatch.countDown();
@@ -192,7 +168,7 @@ public class P4RuntimeStub implements ElectionIdObserver {
         }
 
         /**
-         * Each P4RuntimeStub needs to open a bidirectional stream connection to the server
+         * Each P4RuntimeStub needs to open a bi-directional stream connection to the server
          * using the streamChannel RPC, the connector should advertise its election id right
          * away using a MasterArbitrationUpdate message.
          */

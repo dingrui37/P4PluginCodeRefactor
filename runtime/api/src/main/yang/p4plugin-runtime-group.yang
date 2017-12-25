@@ -1,0 +1,95 @@
+module p4plugin-runtime-group {
+    yang-version 1;
+    namespace "urn:opendaylight:p4plugin:runtime:group";
+    prefix "group";
+
+    organization "ZTE corporation";
+    contact "ding.rui@zte.com.cn";
+
+    revision "2017-08-08" {
+      description "Initial revision.";
+    }
+
+    import p4plugin-runtime-device {
+        prefix "device";
+        revision-date 2017-08-08;
+    }
+
+    import p4plugin-runtime-table {
+        prefix "table";
+        revision-date 2017-08-08;
+    }
+
+    grouping action-profile-group-key {
+        leaf action-profile-name {
+            type string;
+        }
+
+        leaf group-id {
+            type uint32;
+        }
+    }
+
+    grouping action-profile-group-config {
+        uses action-profile-group-key;
+        list group-members {
+            key member-id;
+            leaf member-id {
+                type uint32;
+            }
+
+            leaf weight {
+                type int32;
+            }
+
+            leaf watch {
+                type uint32;
+            }
+        }
+    }
+
+    grouping action-profile-group {
+        uses action-profile-group-config;
+        leaf max-size {
+            type int32;
+            description
+              "Max size cannot be modified after a group has been created";
+        }
+    }
+
+    rpc add-action-profile-group {
+        input {
+            uses device:node-id;
+            uses action-profile-group;
+        }
+    }
+
+    rpc modify-action-profile-group {
+        input {
+            uses device:node-id;
+            uses action-profile-group-config;
+        }
+    }
+
+    rpc delete-action-profile-group {
+        input {
+            uses device:node-id;
+            uses action-profile-group-key;
+        }
+    }
+
+    rpc read-action-profile-group {
+        input {
+            uses device:node-id;
+            leaf action-profile-name {
+                type string;
+            }
+        }
+
+        output {
+            leaf-list groups {
+                type string;
+            }
+        }
+    }
+}

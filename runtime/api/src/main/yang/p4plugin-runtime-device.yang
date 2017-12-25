@@ -3,15 +3,8 @@ module p4plugin-runtime-device {
     namespace "urn:opendaylight:p4plugin:runtime:device";
     prefix "device";
 
-    organization
-        "ZTE corporation";
-
-    contact
-        "ding.rui@zte.com.cn";
-
-    description
-        "This module contains a set of type definitions and
-         RPCs that are used across p4plugin";
+    organization "ZTE corporation";
+    contact "ding.rui@zte.com.cn";
 
     revision "2017-08-08" {
         description "Initial revision.";
@@ -20,11 +13,6 @@ module p4plugin-runtime-device {
     import ietf-inet-types {
         prefix "inet";
         revision-date 2013-07-15;
-    }
-
-    import p4plugin-runtime-common {
-        prefix "common";
-        revision-date 2017-08-08;
     }
 
     grouping grpc-server-address {
