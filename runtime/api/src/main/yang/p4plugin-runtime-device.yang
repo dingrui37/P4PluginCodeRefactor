@@ -15,6 +15,11 @@ module p4plugin-runtime-device {
         revision-date 2013-07-15;
     }
 
+    import p4plugin-runtime-types {
+        prefix "types";
+        revision-date 2017-08-08;
+    }
+
     grouping grpc-server-address {
         leaf ip {
             type inet:ipv4-address;
@@ -22,12 +27,6 @@ module p4plugin-runtime-device {
 
         leaf port {
             type inet:port-number;
-        }
-    }
-
-    grouping node-id {
-        leaf nid {
-            type string;
         }
     }
 
@@ -53,7 +52,7 @@ module p4plugin-runtime-device {
     }
 
     grouping device {
-        uses node-id;
+        uses types:node-id;
         uses target;
         uses dataplane-config;
     }
@@ -66,7 +65,7 @@ module p4plugin-runtime-device {
 
     rpc remove-device {
         input {
-            uses node-id;
+            uses types:node-id;
         }
     }
 
@@ -80,7 +79,7 @@ module p4plugin-runtime-device {
 
     rpc connect-to-device {
         input {
-            uses node-id;
+            uses types:node-id;
         }
 
         output {
@@ -92,13 +91,13 @@ module p4plugin-runtime-device {
 
     rpc set-pipeline-config {
         input {
-            uses node-id;
+            uses types:node-id;
         }
     }
 
     rpc get-pipeline-config {
         input {
-            uses node-id;
+            uses types:node-id;
         }
 
         output {

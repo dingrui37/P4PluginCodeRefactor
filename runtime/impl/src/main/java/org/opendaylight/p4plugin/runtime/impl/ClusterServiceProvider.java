@@ -28,15 +28,14 @@ public class ClusterServiceProvider implements P4pluginRuntimeClusterService {
         GetElectionIdOutputBuilder builder = new GetElectionIdOutputBuilder();
         builder.setHigh(BigInteger.valueOf(electionId.getHigh()));
         builder.setLow(BigInteger.valueOf(electionId.getLow()));
-        return Futures.immediateFuture(RpcResultBuilder.success(builder.build()).build());
+        return RpcResultBuilder.success(builder.build()).buildFuture();
     }
 
     @Override
     public Future<RpcResult<java.lang.Void>> setElectionId(SetElectionIdInput input) {
-        Preconditions.checkArgument(input != null, "Set election Id input is null.");
         long high = input.getHigh().longValue();
         long low = input.getLow().longValue();
         ElectionIdGenerator.getInstance().setElectionId(new ElectionId(high, low));
-        return Futures.immediateFuture(RpcResultBuilder.success((Void)null).build());
+        return RpcResultBuilder.success((Void)null).buildFuture();
     }
 }

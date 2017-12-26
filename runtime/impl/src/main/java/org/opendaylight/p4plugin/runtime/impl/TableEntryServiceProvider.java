@@ -13,6 +13,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import io.grpc.StatusRuntimeException;
 import org.opendaylight.p4plugin.p4runtime.proto.Update;
 import org.opendaylight.p4plugin.p4runtime.proto.WriteRequest;
+import org.opendaylight.p4plugin.runtime.impl.channel.P4RuntimeChannel;
 import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
 import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
 import org.opendaylight.p4plugin.runtime.impl.table.entry.TableEntryGenerator;
@@ -26,118 +27,111 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class TableEntryServiceProvider implements P4pluginRuntimeTableService {
-    private static final Logger LOG = LoggerFactory.getLogger(TableServiceProvider.class);
-    private final DeviceManager manager = DeviceManager.getInstance();
+    private static final Logger LOG = LoggerFactory.getLogger(TableEntryServiceProvider.class);
+    private DeviceManager manager;
+    private ExecutorService executorService;
+
+    public void init() {
+        executorService = Executors.newFixedThreadPool(2);
+        manager = DeviceManager.getInstance();
+        LOG.info("P4plugin table service provider initiated.");
+    }
+
+    public void close() {
+        executorService.shutdown();
+        LOG.info("P4plugin table service provider closed.");
+    }
+
+    private String getErrMsg(StatusRuntimeException e) {
+        return String.format("RPC exception, Status = %s, Reason = %s", e.getStatus(), e.getMessage());
+    }
+
+    private <T> RpcResult<T> rpcResultFailed(String errMsg) {
+        return RpcResultBuilder.<T>failed()
+                .withError(RpcError.ErrorType.APPLICATION, errMsg).build();
+    }
+
+    private <T> RpcResult<T> rpcResultSuccess(T value) {
+        return RpcResultBuilder.success(value).build();
+    }
 
     @Override
     public Future<RpcResult<java.lang.Void>> addTableEntry(AddTableEntryInput input) {
-        if (input == null) {
-            return RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Input is null").buildFuture();
-        }
-
-        String nodeId = input.getNid();
-        Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-        SettableFuture<RpcResult<Void>> future = SettableFuture.create();
-
-        if (optional.isPresent()) {
-            P4Device device = optional.get();
-            WriteRequest request = new TableEntryGenerator(device).generate(input, Update.Type.INSERT);
-            try {
-                device.write(request);
-                future.set(RpcResultBuilder.success((Void) null).build());
-            } catch (StatusRuntimeException e) {
-                String errMsg = String.format("RPC failed, Status = %s, Reason = %s", e.getStatus(), e.getMessage());
-                LOG.info("Add table entry " + errMsg);
-                future.set(RpcResultBuilder.<Void>failed()
-                        .withError(RpcError.ErrorType.APPLICATION, errMsg).build());
+        return executorService.submit(()-> {
+            String nodeId = input.getNid();
+            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
+            if (optional.isPresent()) {
+                try {
+                    optional.get().addTableEntry(input);
+                    return rpcResultSuccess((Void)null);
+                } catch (StatusRuntimeException e) {
+                    return rpcResultFailed(getErrMsg(e));
+                }
+            } else {
+                return rpcResultFailed("Cannot find device.");
             }
-        } else {
-            future.set(RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Cannot find device.").build());
-        }
-
-        return future;
+        });
     }
 
     @Override
     public Future<RpcResult<java.lang.Void>> modifyTableEntry(ModifyTableEntryInput input) {
-        if (input == null) {
-            return RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Input is null").buildFuture();
-        }
-
-        String nodeId = input.getNid();
-        Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-        SettableFuture<RpcResult<Void>> future = SettableFuture.create();
-        if (optional.isPresent()) {
-            P4Device device = optional.get();
-            WriteRequest request = new TableEntryOperator(device).modify(input);
-            try {
-                device.write(request);
-                future.set(RpcResultBuilder.success((Void) null).build());
-            } catch (StatusRuntimeException e) {
-                String errMsg = String.format("RPC failed, Status = %s, Reason = %s", e.getStatus(), e.getMessage());
-                LOG.info("Modify table entry " + errMsg);
-                future.set(RpcResultBuilder.<Void>failed()
-                        .withError(RpcError.ErrorType.APPLICATION, errMsg).build());
+        return executorService.submit(()-> {
+            String nodeId = input.getNid();
+            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
+            if (optional.isPresent()) {
+                try {
+                    optional.get().modifyTableEntry(input);
+                    return rpcResultSuccess((Void)null);
+                } catch (StatusRuntimeException e) {
+                    return rpcResultFailed(getErrMsg(e));
+                }
+            } else {
+                return rpcResultFailed("Cannot find device.");
             }
-        } else {
-            future.set(RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Cannot find device.").build());
-        }
-
-        return future;
+        });
     }
 
     @Override
     public Future<RpcResult<java.lang.Void>> deleteTableEntry(DeleteTableEntryInput input) {
-        if (input == null) {
-            return RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Input is null").buildFuture();
-        }
-
-        String nodeId = input.getNid();
-        Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-        SettableFuture<RpcResult<Void>> future = SettableFuture.create();
-
-        if (optional.isPresent()) {
-            P4Device device = optional.get();
-            WriteRequest request = new TableEntryOperator(device).delete(input);
-            try {
-                device.write(request);
-                future.set(RpcResultBuilder.success((Void) null).build());
-            } catch (StatusRuntimeException e) {
-                String errMsg = String.format("RPC failed, Status = %s, Reason = %s", e.getStatus(), e.getMessage());
-                LOG.info("Delete table entry " + errMsg);
-                future.set(RpcResultBuilder.<Void>failed()
-                        .withError(RpcError.ErrorType.APPLICATION, errMsg).build());
+        return executorService.submit(()-> {
+            String nodeId = input.getNid();
+            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
+            if (optional.isPresent()) {
+                try {
+                    optional.get().deleteTableEntry(input);
+                    return rpcResultSuccess(null);
+                } catch (StatusRuntimeException e) {
+                    return rpcResultFailed(getErrMsg(e));
+                }
+            } else {
+                return rpcResultFailed("Cannot find device.");
             }
-        } else {
-            future.set(RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Cannot find device.").build());
-        }
-
-        return future;
+        });
     }
 
     @Override
     public Future<RpcResult<ReadTableEntryOutput>> readTableEntry(ReadTableEntryInput input) {
-        Preconditions.checkArgument(input != null, "Read table entry RPC input is null.");
-        ReadTableEntryOutputBuilder builder = new ReadTableEntryOutputBuilder();
-        String nodeId = input.getNodeId();
-        String tableName = input.getTable();
-        try {
-            List<String> result = new TableEntryOperator(nodeId).read(tableName);
-            builder.setContent(result);
-            builder.setResult(true);
-        } catch (Exception e) {
-            builder.setResult(false);
-            e.printStackTrace();
-        }
-        return Futures.immediateFuture(RpcResultBuilder.success(builder.build()).build());
+        return executorService.submit(()-> {
+            String nodeId = input.getNid();
+            String tableName = input.getTableName();
+            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
+            if (optional.isPresent()) {
+                try {
+                    ReadTableEntryOutputBuilder builder = new ReadTableEntryOutputBuilder();
+                    List<String> result = optional.get().readTableEntry(tableName);
+                    builder.setEntries(result);
+                    return rpcResultSuccess(builder.build());
+                } catch (StatusRuntimeException e) {
+                    return rpcResultFailed(getErrMsg(e));
+                }
+            } else {
+                return rpcResultFailed("Cannot find device.");
+            }
+        });
     }
 }

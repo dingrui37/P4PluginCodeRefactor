@@ -15,32 +15,48 @@ and is available at http://www.eclipse.org/legal/epl-v10.html
         interface="org.opendaylight.controller.md.sal.binding.api.DataBroker"
         odl:type="default" />
 
-    <reference id="notificationService"
+    <reference id="notificationPublishService"
         interface="org.opendaylight.controller.md.sal.binding.api.NotificationPublishService"/>    
         
-    <bean id="coreProvider"
-        class="org.opendaylight.p4plugin.runtime.impl.CoreProvider"
+    <bean id="runtimeProvider"
+        class="org.opendaylight.p4plugin.runtime.impl.RuntimeProvider"
         init-method="init" destroy-method="close">
         <argument ref="dataBroker" />
-        <argument ref="notificationService" />
-        <property name="bcontext" ref="blueprintBundleContext"></property>
+        <argument ref="notificationPublishService" />
     </bean>
-    
+
     <bean id="deviceServiceProvider"
-        class="org.opendaylight.p4plugin.runtime.impl.DeviceServiceProvider">
+          class="org.opendaylight.p4plugin.runtime.impl.DeviceServiceProvider">
     </bean>
-    <bean id="tableServiceProvider"
-          class="org.opendaylight.p4plugin.runtime.impl.TableServiceProvider">
+    <odl:rpc-implementation ref="deviceServiceProvider" />
+
+    <bean id="tableEntryServiceProvider"
+          class="org.opendaylight.p4plugin.runtime.impl.TableEntryServiceProvider"
+          init-method="init" destroy-method="close">
     </bean>
+    <odl:rpc-implementation ref="tableEntryServiceProvider" />
+
     <bean id="packetServiceProvider"
-          class="org.opendaylight.p4plugin.runtime.impl.PacketServiceProvider">
+          class="org.opendaylight.p4plugin.runtime.impl.PacketServiceProvider"
+          init-method="init" destroy-method="close">
     </bean>
+    <odl:rpc-implementation ref="packetServiceProvider" />
+
     <bean id="clusterServiceProvider"
           class="org.opendaylight.p4plugin.runtime.impl.ClusterServiceProvider">
     </bean>
-
-    <odl:rpc-implementation ref="deviceServiceProvider" />
-    <odl:rpc-implementation ref="tableServiceProvider" />
-    <odl:rpc-implementation ref="packetServiceProvider" />
     <odl:rpc-implementation ref="clusterServiceProvider" />
+
+    <bean id="actionProfileMemberServiceProvider"
+          class="org.opendaylight.p4plugin.runtime.impl.ActionProfileMemberServiceProvider">
+    </bean>
+    <odl:rpc-implementation ref="actionProfileMemberServiceProvider" />
+
+    <bean id="actionProfileGroupServiceProvider"
+          class="org.opendaylight.p4plugin.runtime.impl.ActionProfileGroupServiceProvider">
+    </bean>
+    <odl:rpc-implementation ref="actionProfileGroupServiceProvider" />
+
+
+
 </blueprint>

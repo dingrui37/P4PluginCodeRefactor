@@ -10,13 +10,13 @@ module p4plugin-runtime-packet {
         description "Initial revision.";
     }
 
-    import p4plugin-runtime-device {
-        prefix "device";
+    import p4plugin-runtime-types {
+        prefix "types";
         revision-date 2017-08-08;
     }
 
     notification p4-packet-received {
-        uses device:node-id;
+        uses types:node-id;
         leaf payload {
             type binary;
         }
@@ -24,7 +24,7 @@ module p4plugin-runtime-packet {
 
     rpc p4-transmit-packet {
         input {
-            uses device:node-id;
+            uses types:node-id;
             leaf payload {
                 type binary;
             }

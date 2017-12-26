@@ -1,7 +1,7 @@
-module p4plugin-runtime-table {
+module p4plugin-runtime-write {
     yang-version 1;
-    namespace "urn:opendaylight:p4plugin:runtime:table";
-    prefix "table";
+    namespace "urn:opendaylight:p4plugin:runtime:write";
+    prefix "write";
 
     organization "ZTE corporation";
     contact "ding.rui@zte.com.cn";
@@ -38,7 +38,7 @@ module p4plugin-runtime-table {
     }
 
     grouping match-field {
-        list field {
+        list fields {
             leaf field-name {
                 type string;
             }
@@ -123,39 +123,133 @@ module p4plugin-runtime-table {
         }
     }
 
+    grouping action-profile-member-key {
+        leaf action-profile-name {
+            type string;
+        }
+
+        leaf member-id {
+            type uint32;
+        }
+    }
+
+    grouping action-profile-member {
+        uses action-profile-member-key;
+        uses action;
+    }
+
+    grouping action-profile-group-key {
+        leaf action-profile-name {
+            type string;
+        }
+
+        leaf group-id {
+            type uint32;
+        }
+    }
+
+    grouping action-profile-group-config {
+        uses action-profile-group-key;
+        list group-members {
+            key member-id;
+            leaf member-id {
+                type uint32;
+            }
+
+            leaf weight {
+                type int32;
+            }
+
+            leaf watch {
+                type uint32;
+            }
+        }
+    }
+
+    grouping action-profile-group {
+        uses action-profile-group-key;
+        list group-members {
+            key member-id;
+            leaf member-id {
+                type uint32;
+            }
+
+            leaf weight {
+                type int32;
+            }
+
+            leaf watch {
+                type uint32;
+            }
+        }
+
+        leaf max-size {
+            type int32;
+            description
+              "Max size cannot be modified after a group has been created";
+        }
+    }
+
     rpc add-table-entry {
         input {
-            uses device:node-id;
+            uses types:node-id;
             uses table-entry;
         }
     }
 
     rpc modify-table-entry {
         input {
-            uses device:node-id;
+            uses types:node-id;
             uses table-entry;
         }
     }
 
     rpc delete-table-entry {
         input {
-            uses device:node-id;
+            uses types:node-id;
             uses table-entry-key;
         }
     }
 
-    rpc read-table-entry {
+    rpc add-action-profile-member {
         input {
-            uses device:node-id;
-            leaf table-name {
-                type string;
-            }
+            uses types:node-id;
+            uses action-profile-member;
         }
+    }
 
-        output {
-            leaf-list entries {
-                type string; //Need to improve;
-            }
+    rpc modify-action-profile-member {
+        input {
+            uses types:node-id;
+            uses action-profile-member;
+        }
+    }
+
+    rpc delete-action-profile-member {
+        input {
+            uses types:node-id;
+            uses action-profile-member-key;
+        }
+    }
+
+    rpc add-action-profile-group {
+        input {
+            uses types:node-id;
+            uses action-profile-group;
+        }
+    }
+
+    rpc modify-action-profile-group {
+        input {
+            uses types:node-id;
+            uses action-profile-group;
+        }
+    }
+
+    rpc delete-action-profile-group {
+        input {
+            uses types:node-id;
+            uses action-profile-group-key;
         }
     }
 }

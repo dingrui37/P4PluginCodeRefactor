@@ -30,11 +30,6 @@ public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
 
     @Override
     public Future<RpcResult<java.lang.Void>> addDevice(AddDeviceInput input) {
-        if (input == null) {
-            return RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Input is null").buildFuture();
-        }
-
         String nodeId = input.getNid();
         String ip = input.getIp().getValue();
         Integer port = input.getPort().getValue();
@@ -57,22 +52,12 @@ public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
 
     @Override
     public Future<RpcResult<java.lang.Void>> removeDevice(RemoveDeviceInput input) {
-        if (input == null) {
-            return RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Input is null").buildFuture();
-        }
-
         manager.removeDevice(input.getNid());
         return RpcResultBuilder.success((Void)null).buildFuture();
     }
 
     @Override
     public Future<RpcResult<ConnectToDeviceOutput>> connectToDevice(ConnectToDeviceInput input) {
-        if (input == null) {
-            return RpcResultBuilder.<ConnectToDeviceOutput>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Input is null").buildFuture();
-        }
-
         String nodeId = input.getNid();
         Optional<P4Device> optional= manager.findDevice(nodeId);
         SettableFuture<RpcResult<ConnectToDeviceOutput>> future = SettableFuture.create();
@@ -97,11 +82,6 @@ public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
 
     @Override
     public Future<RpcResult<java.lang.Void>> setPipelineConfig(SetPipelineConfigInput input) {
-        if (input == null) {
-            return RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Input is null").buildFuture();
-        }
-
         String nodeId = input.getNid();
         Optional<P4Device> optional = manager.findDevice(nodeId);
         SettableFuture<RpcResult<Void>> future = SettableFuture.create();
@@ -126,11 +106,6 @@ public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
 
     @Override
     public Future<RpcResult<GetPipelineConfigOutput>> getPipelineConfig(GetPipelineConfigInput input) {
-        if (input == null) {
-            return RpcResultBuilder.<GetPipelineConfigOutput>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Input is null").buildFuture();
-        }
-
         String nodeId = input.getNid();
         Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
         SettableFuture<RpcResult<GetPipelineConfigOutput>> future = SettableFuture.create();

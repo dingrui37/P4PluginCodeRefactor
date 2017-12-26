@@ -9,6 +9,7 @@ package org.opendaylight.p4plugin.runtime.impl.device;
 
 import com.google.protobuf.ByteString;
 import org.opendaylight.p4plugin.p4info.proto.Table;
+import org.opendaylight.p4plugin.p4runtime.proto.*;
 import org.opendaylight.p4plugin.runtime.impl.channel.P4RuntimeStub;
 import org.opendaylight.p4plugin.runtime.impl.table.action.AbstractActionParser;
 import org.opendaylight.p4plugin.runtime.impl.table.action.DirectActionParser;
@@ -18,8 +19,10 @@ import org.opendaylight.p4plugin.runtime.impl.table.match.*;
 import org.opendaylight.p4plugin.runtime.impl.utils.Utils;
 import org.opendaylight.p4plugin.p4config.proto.P4DeviceConfig;
 import org.opendaylight.p4plugin.p4info.proto.P4Info;
-import org.opendaylight.p4plugin.p4runtime.proto.*;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.group.rev170808.ActionProfileGroupKey;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.member.rev170808.ActionProfileMemberKey;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.TableEntry;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.TableEntryKey;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.table.entry.ActionType;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.table.entry.action.type.ACTIONPROFILEGROUP;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.table.entry.action.type.ACTIONPROFILEMEMBER;
@@ -27,6 +30,7 @@ import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev1
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -252,48 +256,6 @@ public class P4Device  {
                 .getPreamble().getName();
     }
 
-    public P4RuntimeStub getRuntimeStub() {
-        return runtimeStub;
-    }
-
-    public Long getDeviceId() {
-        return deviceId;
-    }
-
-    public String getIp() {
-        return ip;
-    }
-
-    public Integer getPort() {
-        return port;
-    }
-
-    public State getDeviceState() {
-        return state;
-    }
-
-    public String getNodeId() {
-        return nodeId;
-    }
-
-    public void setDeviceState(State state) {
-        this.state = state;
-    }
-
-    public boolean isConfigured() {
-        return runtimeInfo != null
-            && deviceConfig != null
-            && getDeviceState() == State.Configured;
-    }
-
-    public boolean connectToDevice() {
-        return runtimeStub.connect();
-    }
-
-    public void shutdown() {
-        runtimeStub.shutdown();
-    }
-
     public SetForwardingPipelineConfigResponse setPipelineConfig() {
         ForwardingPipelineConfig.Builder configBuilder = ForwardingPipelineConfig.newBuilder();
         P4DeviceConfig.Builder p4DeviceConfigBuilder = P4DeviceConfig.newBuilder();
@@ -322,6 +284,102 @@ public class P4Device  {
         return response;
     }
 
+    private WriteRequest createWriteRequest(org.opendaylight.p4plugin.p4runtime.proto.TableEntry entry,
+                                            Update.Type type) {
+        WriteRequest.Builder requestBuilder = WriteRequest.newBuilder();
+        Update.Builder updateBuilder = Update.newBuilder();
+        Entity.Builder entityBuilder = Entity.newBuilder();
+        entityBuilder.setTableEntry(entry);
+        updateBuilder.setType(type);
+        updateBuilder.setEntity(entityBuilder);
+        requestBuilder.setDeviceId(getDeviceId());
+        requestBuilder.addUpdates(updateBuilder);
+        return requestBuilder.build();
+    }
+
+    private WriteRequest createWriteRequest(org.opendaylight.p4plugin.p4runtime.proto.ActionProfileGroup group,
+                                            Update.Type type) {
+        WriteRequest.Builder requestBuilder = WriteRequest.newBuilder();
+        Update.Builder updateBuilder = Update.newBuilder();
+        Entity.Builder entityBuilder = Entity.newBuilder();
+        entityBuilder.setActionProfileGroup(group);
+        updateBuilder.setEntity(entityBuilder);
+        updateBuilder.setType(type);
+        requestBuilder.setDeviceId(getDeviceId());
+        requestBuilder.addUpdates(updateBuilder);
+        return requestBuilder.build();
+    }
+
+    private WriteRequest createWriteRequest(org.opendaylight.p4plugin.p4runtime.proto.ActionProfileMember member,
+                                            Update.Type type) {
+        WriteRequest.Builder requestBuilder = WriteRequest.newBuilder();
+        Update.Builder updateBuilder = Update.newBuilder();
+        Entity.Builder entityBuilder = Entity.newBuilder();
+        entityBuilder.setActionProfileMember(member);
+        updateBuilder.setType(type);
+        updateBuilder.setEntity(entityBuilder);
+        requestBuilder.setDeviceId(getDeviceId());
+        requestBuilder.addUpdates(updateBuilder);
+        return requestBuilder.build();
+    }
+
+    public WriteResponse addTableEntry(TableEntry inputEntry) {
+        WriteRequest request = createWriteRequest(toMessage(inputEntry), Update.Type.INSERT);
+        return write(request);
+    }
+
+    public WriteResponse modifyTableEntry(TableEntry inputEntry) {
+        WriteRequest request = createWriteRequest(toMessage(inputEntry), Update.Type.MODIFY);
+        return write(request);
+    }
+
+    public WriteResponse deleteTableEntry(TableEntryKey inputEntryKey) {
+        WriteRequest request = createWriteRequest(toMessage(inputEntryKey), Update.Type.DELETE);
+        return write(request);
+    }
+
+    public List<String> readTableEntry(String tableName) {
+        return Collections.emptyList();
+    }
+
+    public WriteResponse addActionProfileMember(ActionProfileMember inputMember) {
+        WriteRequest request = createWriteRequest(toMessage(inputMember), Update.Type.INSERT);
+        return write(request);
+    }
+
+    public WriteResponse modifyActionProfileMember(ActionProfileMember inputMember) {
+        WriteRequest request = createWriteRequest(toMessage(inputMember), Update.Type.MODIFY);
+        return write(request);
+    }
+
+    public WriteResponse deleteActionProfileMember(ActionProfileMemberKey inputMemberKey) {
+        WriteRequest request = createWriteRequest(toMessage(inputMemberKey), Update.Type.DELETE);
+        return write(request);
+    }
+
+    public List<String> readActionProfileMember(String tableName) {
+        return Collections.emptyList();
+    }
+
+    public WriteResponse addActionProfileGroup(ActionProfileGroup inputGroup) {
+        WriteRequest request = createWriteRequest(toMessage(inputGroup), Update.Type.INSERT);
+        return write(request);
+    }
+
+    public WriteResponse modifyActionProfileGroup(ActionProfileGroup inputGroup) {
+        WriteRequest request = createWriteRequest(toMessage(inputGroup), Update.Type.MODIFY);
+        return write(request);
+    }
+
+    public WriteResponse deleteActionProfileGroup(ActionProfileGroupKey inputGroupKey) {
+        WriteRequest request = createWriteRequest(toMessage(inputGroupKey), Update.Type.DELETE);
+        return write(request);
+    }
+
+    public List<String> readActionProfileGroup(String tableName) {
+        return Collections.emptyList();
+    }
+
     public WriteResponse write(WriteRequest request) {
         WriteResponse response = runtimeStub.getBlockingStub().write(request);
         return response;
@@ -337,7 +395,35 @@ public class P4Device  {
         runtimeStub.transmitPacket(payload);
     }
 
+    public Long getDeviceId() {
+        return deviceId;
+    }
 
+    public String getNodeId() {
+        return nodeId;
+    }
+
+    public State getDeviceState() {
+        return state;
+    }
+
+    public void setDeviceState(State state) {
+        this.state = state;
+    }
+
+    public boolean isConfigured() {
+        return runtimeInfo != null
+                && deviceConfig != null
+                && getDeviceState() == State.Configured;
+    }
+
+    public boolean connectToDevice() {
+        return runtimeStub.connect();
+    }
+
+    public void shutdown() {
+        runtimeStub.shutdown();
+    }
 
     private TableAction buildTableAction(ActionType actionType) {
         AbstractActionParser parser;

@@ -47,4 +47,10 @@ module p4plugin-runtime-types {
         description
           "An IEEE 802 MAC address";
     }
+
+    grouping node-id {
+        leaf nid {
+            type string;
+        }
+    }
 }
