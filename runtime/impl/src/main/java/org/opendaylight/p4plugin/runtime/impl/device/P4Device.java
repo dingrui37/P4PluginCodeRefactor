@@ -8,6 +8,7 @@
 package org.opendaylight.p4plugin.runtime.impl.device;
 
 import com.google.protobuf.ByteString;
+import io.grpc.StatusRuntimeException;
 import org.opendaylight.p4plugin.p4info.proto.Table;
 import org.opendaylight.p4plugin.p4runtime.proto.*;
 import org.opendaylight.p4plugin.runtime.impl.channel.P4RuntimeStub;
@@ -19,14 +20,17 @@ import org.opendaylight.p4plugin.runtime.impl.table.match.*;
 import org.opendaylight.p4plugin.runtime.impl.utils.Utils;
 import org.opendaylight.p4plugin.p4config.proto.P4DeviceConfig;
 import org.opendaylight.p4plugin.p4info.proto.P4Info;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.group.rev170808.ActionProfileGroupKey;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.member.rev170808.ActionProfileMemberKey;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.TableEntry;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.TableEntryKey;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.table.entry.ActionType;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.table.entry.action.type.ACTIONPROFILEGROUP;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.table.entry.action.type.ACTIONPROFILEMEMBER;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.table.rev170808.table.entry.action.type.DIRECTACTION;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.*;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.ActionProfileGroup;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.ActionProfileMember;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.TableEntry;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.Fields;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.fields.MatchType;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.fields.match.type.EXACT;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.fields.match.type.LPM;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.fields.match.type.RANGE;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.fields.match.type.TERNARY;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.table.entry.action.type.ACTIONPROFILEGROUP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,59 +39,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * The relationship between P4Device, P4RuntimeStub, P4RuntimeChannel and Stream channel
- * is shown below.
- *    ---------------------------                      ---------------------------
- *  |           Device A        |                    |          Device B         |
- *  |                           |                    |                           |
- *  |  -----------------------  |                    |  -----------------------  |
- *  | |          Stub         | |                    | |          Stub         | |
- *  | |                       | |                    | |                       | |
- *  | |  -------------------  | |                    | |  -------------------  | |
- *  | | |  Stream Channel A | | |                    | | |  Stream Channel B | | |
- *  | | |                   | | |                    | | |                   | | |
- *  | |  -------------------  | |                    | |  -------------------  | |
- *  |  -----------------------  |                    |  -----------------------  |
- *   ---------------------------                      ---------------------------
- *               / \                                               / \
- *                |                                                 |
- *                 -------------------      ------------------------
- *                                    |    |
- *                                   \ /  \ /
- *   ----------------------------------------------------------------------------
- *  |                             gRPC channel                                   |
- *   ----------------------------------------------------------------------------
- *                     |                                     |
- *                     |     ---------------------------     |
- *                     |    |       Stream A Data       |    |
- *                     |     ---------------------------     |
- *                     |     ---------------------------     |
- *                     |    |       Stream B Data       |    |
- *                     |     ---------------------------     |
- *                     |     ---------------------------     |
- *                     |    |       Stream B Data       |    |
- *                     |     ---------------------------     |
- *                     |     ---------------------------     |
- *                     |    |       Stream A Data       |    |
- *                     |     ---------------------------     |
- *                     |                                     |
- *   -----------------------------------------------------------------------------
- *  |                                 Switch                                      |
- *  |   -----------------------------------------------------------------------   |
- *  |  |                            gRPC server                                |  |
- *  |   -----------------------------------------------------------------------   |
- *  |                / \                                       / \                |
- *  |                 |                                         |                 |
- *  |                 |                                         |                 |
- *  |                \ /                                       \ /                |
- *  |   ----------------------------               ----------------------------   |
- *  |  |                            |             |                            |  |
- *  |  |           Device A         |             |           Device B         |  |
- *  |  |                            |             |                            |  |
- *  |   ----------------------------               ----------------------------   |
- *   -----------------------------------------------------------------------------
- */
 public class P4Device  {
     private static final Logger LOG = LoggerFactory.getLogger(P4Device.class);
     private P4RuntimeStub runtimeStub;
@@ -324,18 +275,42 @@ public class P4Device  {
     }
 
     public WriteResponse addTableEntry(TableEntry inputEntry) {
+        WriteResponse response;
         WriteRequest request = createWriteRequest(toMessage(inputEntry), Update.Type.INSERT);
-        return write(request);
+        try {
+            response = write(request);
+        } catch (StatusRuntimeException e) {
+            LOG.info("Add table entry RPC exception, Status = {}, Reason = {}",
+                    e.getStatus(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return response;
     }
 
     public WriteResponse modifyTableEntry(TableEntry inputEntry) {
+        WriteResponse response;
         WriteRequest request = createWriteRequest(toMessage(inputEntry), Update.Type.MODIFY);
-        return write(request);
+        try {
+            response = write(request);
+        } catch (StatusRuntimeException e) {
+            LOG.info("Modify table entry RPC exception, Status = {}, Reason = {}",
+                    e.getStatus(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return response;
     }
 
     public WriteResponse deleteTableEntry(TableEntryKey inputEntryKey) {
+        WriteResponse response;
         WriteRequest request = createWriteRequest(toMessage(inputEntryKey), Update.Type.DELETE);
-        return write(request);
+        try {
+            response = write(request);
+        } catch (StatusRuntimeException e) {
+            LOG.info("Delete table entry RPC exception, Status = {}, Reason = {}",
+                    e.getStatus(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return response;
     }
 
     public List<String> readTableEntry(String tableName) {
@@ -343,18 +318,42 @@ public class P4Device  {
     }
 
     public WriteResponse addActionProfileMember(ActionProfileMember inputMember) {
+        WriteResponse response;
         WriteRequest request = createWriteRequest(toMessage(inputMember), Update.Type.INSERT);
-        return write(request);
+        try {
+            response = write(request);
+        } catch (StatusRuntimeException e) {
+            LOG.info("Add action profile member RPC exception, Status = {}, Reason = {}",
+                    e.getStatus(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return response;
     }
 
     public WriteResponse modifyActionProfileMember(ActionProfileMember inputMember) {
+        WriteResponse response;
         WriteRequest request = createWriteRequest(toMessage(inputMember), Update.Type.MODIFY);
-        return write(request);
+        try {
+            response = write(request);
+        } catch (StatusRuntimeException e) {
+            LOG.info("Modify action profile member RPC exception, Status = {}, Reason = {}",
+                    e.getStatus(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return response;
     }
 
     public WriteResponse deleteActionProfileMember(ActionProfileMemberKey inputMemberKey) {
+        WriteResponse response;
         WriteRequest request = createWriteRequest(toMessage(inputMemberKey), Update.Type.DELETE);
-        return write(request);
+        try {
+            response = write(request);
+        } catch (StatusRuntimeException e) {
+            LOG.info("Delete action profile member RPC exception, Status = {}, Reason = {}",
+                    e.getStatus(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return response;
     }
 
     public List<String> readActionProfileMember(String tableName) {
@@ -362,18 +361,42 @@ public class P4Device  {
     }
 
     public WriteResponse addActionProfileGroup(ActionProfileGroup inputGroup) {
+        WriteResponse response;
         WriteRequest request = createWriteRequest(toMessage(inputGroup), Update.Type.INSERT);
-        return write(request);
+        try {
+            response = write(request);
+        } catch (StatusRuntimeException e) {
+            LOG.info("Add action profile group RPC exception, Status = {}, Reason = {}",
+                    e.getStatus(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return response;
     }
 
     public WriteResponse modifyActionProfileGroup(ActionProfileGroup inputGroup) {
+        WriteResponse response;
         WriteRequest request = createWriteRequest(toMessage(inputGroup), Update.Type.MODIFY);
-        return write(request);
+        try {
+            response = write(request);
+        } catch (StatusRuntimeException e) {
+            LOG.info("Modify action profile group RPC exception, Status = {}, Reason = {}",
+                    e.getStatus(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return response;
     }
 
     public WriteResponse deleteActionProfileGroup(ActionProfileGroupKey inputGroupKey) {
+        WriteResponse response;
         WriteRequest request = createWriteRequest(toMessage(inputGroupKey), Update.Type.DELETE);
-        return write(request);
+        try {
+            response = write(request);
+        } catch (StatusRuntimeException e) {
+            LOG.info("Delete action profile group RPC exception, Status = {}, Reason = {}",
+                    e.getStatus(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return response;
     }
 
     public List<String> readActionProfileGroup(String tableName) {
@@ -439,38 +462,58 @@ public class P4Device  {
         return parser.parse();
     }
 
-    private FieldMatch buildFieldMatch(Field field, String tableName) {
-        AbstractMatchFieldParser parser;
-        MatchType matchType = field.getMatchType();
-        String fieldName = field.getFieldName();
+    private FieldMatch exactMatchParse(EXACT exact, String tableName, String fieldName) {
+        FieldMatch.Builder fieldMatchBuilder = FieldMatch.newBuilder();
+        FieldMatch.Exact.Builder exactBuilder = FieldMatch.Exact.newBuilder();
+        Integer matchFieldWidth = getMatchFieldWidth(tableName, fieldName);
+        Integer matchFieldId = getMatchFieldId(tableName, fieldName);
+        String valueStr = new String(exact.getExactValue().getValue());
+        byte[] valeBytes = Utils.strToByteArray(valueStr, matchFieldWidth);
+        exactBuilder.setValue(ByteString.copyFrom(valeBytes, 0, matchFieldWidth));
+        fieldMatchBuilder.setExact(exactBuilder);
+        fieldMatchBuilder.setFieldId(matchFieldId);
+        return fieldMatchBuilder.build();
+    }
+
+    private FieldMatch lpmMatchParse(LPM lpm, String tableName, String fieldName) {
+        FieldMatch.Builder fieldMatchBuilder = FieldMatch.newBuilder();
+        FieldMatch.Exact.Builder exactBuilder = FieldMatch.Exact.newBuilder();
+        Integer matchFieldWidth = getMatchFieldWidth(tableName, fieldName);
+        Integer matchFieldId = getMatchFieldId(tableName, fieldName);
+        String valueStr = new String(exact.getExactValue().getValue());
+        byte[] valeBytes = Utils.strToByteArray(valueStr, matchFieldWidth);
+        exactBuilder.setValue(ByteString.copyFrom(valeBytes, 0, matchFieldWidth));
+        fieldMatchBuilder.setExact(exactBuilder);
+        fieldMatchBuilder.setFieldId(matchFieldId);
+        return fieldMatchBuilder.build();
+    }
+
+
+
+    private FieldMatch buildFieldMatch(Fields fields, String tableName) {
+        MatchType matchType = fields.getMatchType();
+        String fieldName = fields.getFieldName();
+
         if (matchType instanceof EXACT) {
-            parser = new ExactMatchParser(this, (EXACT) matchType, tableName, fieldName);
+            return exactMatchParse((EXACT)matchType, tableName, fieldName);
         } else if (matchType instanceof LPM) {
-            parser = new LpmMatchParser(this, (LPM) matchType, tableName, fieldName);
+            return lpmMatchParse((LPM)matchType, tableName, fieldName);
         } else if (matchType instanceof TERNARY) {
-            parser = new TernaryMatchParser(this, (TERNARY) matchType, tableName, fieldName);
+            return ternaryMatchParse((TERNARY)matchType, tableName, fieldName);
         } else if (matchType instanceof RANGE) {
-            parser = new RangeMatchParser(this, (RANGE) matchType, tableName, fieldName);
+            return rangeMatchParse((RANGE) matchType, tableName, fieldName);
         } else {
             throw new IllegalArgumentException("Invalid match type");
         }
-        return parser.parse();
     }
 
-    /**
-     * Input table entry serialize to protobuf message. Used for adding and modifying an entry.
-     * When this method is called, the device must be configured.
-     */
-    public org.opendaylight.p4plugin.p4runtime.proto.TableEntry toMessage(TableEntry input) {
-        String tableName = input.getTable();
+    public org.opendaylight.p4plugin.p4runtime.proto.TableEntry toProtoEntry(TableEntry input) {
+        String tableName = input.getTableName();
         int tableId = getTableId(tableName);
         org.opendaylight.p4plugin.p4runtime.proto.TableEntry.Builder tableEntryBuilder =
                 org.opendaylight.p4plugin.p4runtime.proto.TableEntry.newBuilder();
-        List<Field> fields = input.getField();
-        fields.forEach(field -> {
-            org.opendaylight.p4plugin.p4runtime.proto.FieldMatch fieldMatch = buildFieldMatch(field, tableName);
-            tableEntryBuilder.addMatch(fieldMatch);
-        });
+        List<Fields> fields = input.getFields();
+        fields.forEach(field -> tableEntryBuilder.addMatch(buildFieldMatch(field, tableName)));
         ActionType actionType = input.getActionType();
         org.opendaylight.p4plugin.p4runtime.proto.TableAction tableAction = buildTableAction(actionType);
         tableEntryBuilder.setPriority(input.getPriority());

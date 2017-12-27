@@ -9,7 +9,6 @@ package org.opendaylight.p4plugin.runtime.impl;
 
 import io.grpc.StatusRuntimeException;
 import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
-import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.*;
 import org.opendaylight.yangtools.yang.common.RpcError;
 import org.opendaylight.yangtools.yang.common.RpcResult;
@@ -17,7 +16,6 @@ import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,142 +52,82 @@ public class WriteServiceProvider implements P4pluginRuntimeWriteService {
 
     private Callable<RpcResult<Void>> addEntry(AddTableEntryInput input) {
         return ()->{
-            String nodeId = input.getNid();
-            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-            optional.ifPresent(()->{
-                try {
-                    optional.get().addTableEntry(input);
-                    return rpcResultSuccess(null);
-                } catch (StatusRuntimeException e) {
-                    return rpcResultFailed(getErrMsg(e));
-                }
-            });
-            return rpcResultFailed("Cannot find device.");
+            manager.findConfiguredDevice(input.getNid())
+                   .orElseThrow(IllegalArgumentException::new)
+                   .addTableEntry(input);
+            return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> modifyEntry(ModifyTableEntryInput input) {
         return ()->{
-            String nodeId = input.getNid();
-            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-            optional.ifPresent(()->{
-                try {
-                    optional.get().modifyTableEntry(input);
-                    return rpcResultSuccess(null);
-                } catch (StatusRuntimeException e) {
-                    return rpcResultFailed(getErrMsg(e));
-                }
-            });
-            return rpcResultFailed("Cannot find device.");
+            manager.findConfiguredDevice(input.getNid())
+                   .orElseThrow(IllegalArgumentException::new)
+                   .modifyTableEntry(input);
+            return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> deleteEntry(DeleteTableEntryInput input) {
         return ()->{
-            String nodeId = input.getNid();
-            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-            optional.ifPresent(()->{
-                try {
-                    optional.get().deleteTableEntry(input);
-                    return rpcResultSuccess(null);
-                } catch (StatusRuntimeException e) {
-                    return rpcResultFailed(getErrMsg(e));
-                }
-            });
-            return rpcResultFailed("Cannot find device.");
+            manager.findConfiguredDevice(input.getNid())
+                   .orElseThrow(IllegalArgumentException::new)
+                   .deleteTableEntry(input);
+            return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> addMember(AddActionProfileMemberInput input) {
         return ()->{
-            String nodeId = input.getNid();
-            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-            optional.ifPresent(()->{
-                try {
-                    optional.get().addActionProfileMember(input);
-                    return rpcResultSuccess(null);
-                } catch (StatusRuntimeException e) {
-                    return rpcResultFailed(getErrMsg(e));
-                }
-            });
-            return rpcResultFailed("Cannot find device.");
+            manager.findConfiguredDevice(input.getNid())
+                   .orElseThrow(IllegalArgumentException::new)
+                   .addActionProfileMember(input);
+            return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> modifyMember(ModifyActionProfileMemberInput input) {
         return ()->{
-            String nodeId = input.getNid();
-            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-            optional.ifPresent(()->{
-                try {
-                    optional.get().modifyActionProfileMember(input);
-                    return rpcResultSuccess(null);
-                } catch (StatusRuntimeException e) {
-                    return rpcResultFailed(getErrMsg(e));
-                }
-            });
-            return rpcResultFailed("Cannot find device.");
+            manager.findConfiguredDevice(input.getNid())
+                   .orElseThrow(IllegalArgumentException::new)
+                   .modifyActionProfileMember(input);
+            return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> deleteMember(DeleteActionProfileMemberInput input) {
         return ()->{
-            String nodeId = input.getNid();
-            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-            optional.ifPresent(()->{
-                try {
-                    optional.get().deleteActionProfileMember(input);
-                    return rpcResultSuccess(null);
-                } catch (StatusRuntimeException e) {
-                    return rpcResultFailed(getErrMsg(e));
-                }
-            });
-            return rpcResultFailed("Cannot find device.");
+            manager.findConfiguredDevice(input.getNid())
+                   .orElseThrow(IllegalArgumentException::new)
+                   .deleteActionProfileMember(input);
+            return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> addGroup(AddActionProfileGroupInput input) {
         return ()->{
-            Optional<P4Device> optional = manager.findConfiguredDevice(input.getNid());
-            optional.ifPresent(()->{
-                try {
-                    optional.get().addActionProfileGroup(input);
-                    return rpcResultSuccess(null);
-                } catch (StatusRuntimeException e) {
-                    return rpcResultFailed(getErrMsg(e));
-                }
-            });
-            return rpcResultFailed("Cannot find device");
+            manager.findConfiguredDevice(input.getNid())
+                   .orElseThrow(IllegalArgumentException::new)
+                   .addActionProfileGroup(input);
+            return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> modifyGroup(ModifyActionProfileGroupInput input) {
         return ()->{
-            Optional<P4Device> optional = manager.findConfiguredDevice(input.getNid());
-            optional.ifPresent(()->{
-                try {
-                    optional.get().modifyActionProfileGroup(input);
-                    return rpcResultSuccess(null);
-                } catch (StatusRuntimeException e) {
-                    return rpcResultFailed(getErrMsg(e));
-                }
-            });
-            return rpcResultFailed("Cannot find device");
+            manager.findConfiguredDevice(input.getNid())
+                   .orElseThrow(IllegalArgumentException::new)
+                   .modifyActionProfileGroup(input);
+            return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> deleteGroup(DeleteActionProfileGroupInput input) {
         return ()->{
-            Optional<P4Device> optional = manager.findConfiguredDevice(input.getNid());
-            optional.ifPresent(()->{
-                try {
-                    optional.get().deleteActionProfileGroup((input);
-                    return rpcResultSuccess(null);
-                } catch (StatusRuntimeException e) {
-                    return rpcResultFailed(getErrMsg(e));
-                }
-            });
-            return rpcResultFailed("Cannot find device");
+            manager.findConfiguredDevice(input.getNid())
+                   .orElseThrow(IllegalArgumentException::new)
+                   .deleteActionProfileGroup(input);
+            return rpcResultSuccess(null);
         };
     }
 
