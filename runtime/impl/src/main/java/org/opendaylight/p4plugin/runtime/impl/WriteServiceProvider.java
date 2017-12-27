@@ -29,12 +29,12 @@ public class WriteServiceProvider implements P4pluginRuntimeWriteService {
     public void init() {
         executorService = Executors.newFixedThreadPool(3);
         manager = DeviceManager.getInstance();
-        LOG.info("P4plugin table service provider initiated.");
+        LOG.info("P4plugin write service provider initiated.");
     }
 
     public void close() {
         executorService.shutdown();
-        LOG.info("P4plugin table service provider closed.");
+        LOG.info("P4plugin write service provider closed.");
     }
 
     private String getErrMsg(StatusRuntimeException e) {

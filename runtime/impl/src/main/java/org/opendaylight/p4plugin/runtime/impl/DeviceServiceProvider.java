@@ -26,34 +26,53 @@ import java.util.concurrent.*;
 
 public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
     private static final Logger LOG = LoggerFactory.getLogger(DeviceServiceProvider.class);
-    private final DeviceManager manager =  DeviceManager.getInstance();
+    private DeviceManager manager;
+    private ExecutorService executorService;
+
+    public void init() {
+        executorService = Executors.newFixedThreadPool(1);
+        manager = DeviceManager.getInstance();
+        LOG.info("P4plugin device service provider initiated.");
+    }
+
+    public void close() {
+        executorService.shutdown();
+        LOG.info("P4plugin device service provider closed.");
+    }
+
+    private <T> RpcResult<T> rpcResultSuccess(T value) {
+        return RpcResultBuilder.success(value).build();
+    }
+
+    private Callable<RpcResult<Void>> addDev(AddDeviceInput input) {
+        return ()->{
+            String nodeId = input.getNid();
+            String ip = input.getIp().getValue();
+            Integer port = input.getPort().getValue();
+            Long deviceId = input.getDid().longValue();
+            String runtimeFile = input.getRuntimeFilePath();
+            String configFile = input.getConfigFilePath();
+            manager.addDevice(nodeId, deviceId, ip, port, runtimeFile, configFile);
+            LOG.info("Add device = [{}/{}/{}:{}/{}/{}] success." , nodeId, deviceId, ip, port, runtimeFile, configFile);
+            return rpcResultSuccess(null);
+        };
+    }
+
+    private Callable<RpcResult<Void>> removeDev(RemoveDeviceInput input) {
+        return ()->{
+            manager.removeDevice(input.getNid());
+            return rpcResultSuccess(null);
+        };
+    }
 
     @Override
     public Future<RpcResult<java.lang.Void>> addDevice(AddDeviceInput input) {
-        String nodeId = input.getNid();
-        String ip = input.getIp().getValue();
-        Integer port = input.getPort().getValue();
-        Long deviceId = input.getDid().longValue();
-        String runtimeFile = input.getRuntimeFilePath();
-        String configFile = input.getConfigFilePath();
-        SettableFuture<RpcResult<java.lang.Void>> future = SettableFuture.create();
-
-        try {
-            manager.addDevice(nodeId, deviceId, ip, port, runtimeFile, configFile);
-            future.set(RpcResultBuilder.success((Void)null).build());
-            LOG.info("Add device = [{}/{}/{}:{}/{}/{}] success." , nodeId, deviceId, ip, port, runtimeFile, configFile);
-        } catch (IllegalArgumentException | IOException e) {
-            future.set(RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, e.getMessage()).build());
-        }
-
-        return future;
+        return executorService.submit(addDev(input));
     }
 
     @Override
     public Future<RpcResult<java.lang.Void>> removeDevice(RemoveDeviceInput input) {
-        manager.removeDevice(input.getNid());
-        return RpcResultBuilder.success((Void)null).buildFuture();
+        return executorService.submit(removeDev(input));
     }
 
     @Override
