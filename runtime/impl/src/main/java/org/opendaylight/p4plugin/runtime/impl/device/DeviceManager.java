@@ -53,7 +53,7 @@ public class DeviceManager {
     public void addDevice(String nodeId, Long deviceId, String ip, Integer port,
                           String runtimeFile, String configFile) throws IOException {
         if (isDeviceExist(nodeId, ip, port, deviceId)) {
-            throw new IllegalArgumentException("Invalid param.");
+            throw new IllegalArgumentException("Invalid device param.");
         }
 
         P4Info p4Info = Utils.parseRuntimeInfo(runtimeFile);
@@ -73,7 +73,7 @@ public class DeviceManager {
         optional.ifPresent((device)->{
             device.shutdown();
             devices.remove(nodeId);
-            LOG.info("Device = {} removed.", device.getNodeId());
+            LOG.info("Device = [{}] removed.", device.getNodeId());
         });
     }
 

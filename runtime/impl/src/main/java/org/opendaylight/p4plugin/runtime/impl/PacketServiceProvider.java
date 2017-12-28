@@ -31,7 +31,7 @@ public class PacketServiceProvider implements P4pluginRuntimePacketService {
     private ExecutorService executorService;
 
     public void init() {
-        executorService = Executors.newFixedThreadPool(2);
+        executorService = Executors.newFixedThreadPool(1);
         manager = DeviceManager.getInstance();
         LOG.info("P4plugin packet service provider initiated.");
     }
@@ -46,15 +46,8 @@ public class PacketServiceProvider implements P4pluginRuntimePacketService {
         return executorService.submit(()->{
             String nodeId = input.getNid();
             Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-
-            if (optional.isPresent()) {
-                optional.get().transmitPacket(input.getPayload());
-                return RpcResultBuilder.success((Void)null).build();
-            } else {
-                return RpcResultBuilder.<Void>failed()
-                        .withError(RpcError.ErrorType.APPLICATION, "Cannot find device")
-                        .build();
-            }
+            optional.orElseThrow(IllegalArgumentException::new).transmitPacket(input.getPayload());
+            return RpcResultBuilder.success((Void)null).build();
         });
     }
 }

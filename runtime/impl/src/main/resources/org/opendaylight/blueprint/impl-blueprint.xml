@@ -26,15 +26,22 @@ and is available at http://www.eclipse.org/legal/epl-v10.html
     </bean>
 
     <bean id="deviceServiceProvider"
-          class="org.opendaylight.p4plugin.runtime.impl.DeviceServiceProvider">
+          class="org.opendaylight.p4plugin.runtime.impl.DeviceServiceProvider"
+          init-method="init" destroy-method="close" >
     </bean>
     <odl:rpc-implementation ref="deviceServiceProvider" />
 
-    <bean id="tableEntryServiceProvider"
-          class="org.opendaylight.p4plugin.runtime.impl.TableEntryServiceProvider"
+    <bean id="writeServiceProvider"
+          class="org.opendaylight.p4plugin.runtime.impl.WriteServiceProvider"
           init-method="init" destroy-method="close">
     </bean>
-    <odl:rpc-implementation ref="tableEntryServiceProvider" />
+    <odl:rpc-implementation ref="writeServiceProvider" />
+
+    <bean id="readServiceProvider"
+          class="org.opendaylight.p4plugin.runtime.impl.ReadServiceProvider"
+          init-method="init" destroy-method="close">
+    </bean>
+    <odl:rpc-implementation ref="writeServiceProvider" />
 
     <bean id="packetServiceProvider"
           class="org.opendaylight.p4plugin.runtime.impl.PacketServiceProvider"
@@ -46,17 +53,5 @@ and is available at http://www.eclipse.org/legal/epl-v10.html
           class="org.opendaylight.p4plugin.runtime.impl.ClusterServiceProvider">
     </bean>
     <odl:rpc-implementation ref="clusterServiceProvider" />
-
-    <bean id="actionProfileMemberServiceProvider"
-          class="org.opendaylight.p4plugin.runtime.impl.ActionProfileMemberServiceProvider">
-    </bean>
-    <odl:rpc-implementation ref="actionProfileMemberServiceProvider" />
-
-    <bean id="actionProfileGroupServiceProvider"
-          class="org.opendaylight.p4plugin.runtime.impl.ActionProfileGroupServiceProvider">
-    </bean>
-    <odl:rpc-implementation ref="actionProfileGroupServiceProvider" />
-
-
 
 </blueprint>

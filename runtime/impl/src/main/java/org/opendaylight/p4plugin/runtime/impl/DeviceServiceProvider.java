@@ -7,20 +7,17 @@
  */
 package org.opendaylight.p4plugin.runtime.impl;
 
-import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.TextFormat;
-import io.grpc.StatusRuntimeException;
+import org.opendaylight.p4plugin.p4info.proto.P4Info;
 import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
 import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.P4pluginRuntimeDeviceService;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.*;
-import org.opendaylight.yangtools.yang.common.RpcError;
 import org.opendaylight.yangtools.yang.common.RpcResult;
 import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.*;
 
@@ -65,6 +62,54 @@ public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
         };
     }
 
+    private Callable<RpcResult<ConnectToDeviceOutput>> connectToDev(ConnectToDeviceInput input) {
+        return ()->{
+            String nodeId = input.getNid();
+            Optional<P4Device> optional = manager.findDevice(nodeId);
+            Boolean connectStatus = optional.orElseThrow(IllegalArgumentException::new).connectToDevice();
+            P4Device.State state = connectStatus ? P4Device.State.Connected : P4Device.State.Unknown;
+            optional.get().setDeviceState(state);
+            LOG.info("Connect to device = [{}], connect status = [{}]." , nodeId, connectStatus);
+            ConnectToDeviceOutputBuilder outputBuilder = new ConnectToDeviceOutputBuilder();
+            outputBuilder.setConnectStatus(connectStatus);
+            return rpcResultSuccess(outputBuilder.build());
+        };
+    }
+
+    private Callable<RpcResult<java.lang.Void>> setConfig(SetPipelineConfigInput input) {
+        return ()->{
+            String nodeId = input.getNid();
+            Optional<P4Device> optional = manager.findDevice(nodeId);
+            optional.orElseThrow(IllegalArgumentException::new).setPipelineConfig();
+            optional.get().setDeviceState(P4Device.State.Configured);
+            LOG.info("Set device = [{}] pipeline config success", nodeId);
+            return rpcResultSuccess(null);
+        };
+    }
+
+    private Callable<RpcResult<GetPipelineConfigOutput>> getConfig(GetPipelineConfigInput input) {
+        return ()->{
+            String nodeId = input.getNid();
+            Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
+            P4Info p4info = optional.orElseThrow(IllegalArgumentException::new)
+                    .getPipelineConfig()
+                    .getConfigs(0)
+                    .getP4Info();
+            String result = TextFormat.printToString(p4info);
+            GetPipelineConfigOutputBuilder outputBuilder = new GetPipelineConfigOutputBuilder();
+            outputBuilder.setP4Info(result);
+            return rpcResultSuccess(outputBuilder.build());
+        };
+    }
+
+    private Callable<RpcResult<QueryDevicesOutput>> queryDevs() {
+        return ()->{
+            QueryDevicesOutputBuilder outputBuilder = new QueryDevicesOutputBuilder();
+            outputBuilder.setNodes(manager.queryNodes());
+            return rpcResultSuccess(outputBuilder.build());
+        };
+    }
+
     @Override
     public Future<RpcResult<java.lang.Void>> addDevice(AddDeviceInput input) {
         return executorService.submit(addDev(input));
@@ -77,82 +122,21 @@ public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
 
     @Override
     public Future<RpcResult<ConnectToDeviceOutput>> connectToDevice(ConnectToDeviceInput input) {
-        String nodeId = input.getNid();
-        Optional<P4Device> optional= manager.findDevice(nodeId);
-        SettableFuture<RpcResult<ConnectToDeviceOutput>> future = SettableFuture.create();
-
-        if (optional.isPresent()) {
-            new Thread(() -> {
-                ConnectToDeviceOutputBuilder outputBuilder = new ConnectToDeviceOutputBuilder();
-                P4Device device = optional.get();
-                Boolean connectStatus = device.connectToDevice();
-                P4Device.State state = connectStatus ? P4Device.State.Connected : P4Device.State.Unknown;
-                device.setDeviceState(state);
-                LOG.info("Connect to device = [{}], connect status = [{}]." , nodeId, connectStatus);
-                future.set(RpcResultBuilder.success(outputBuilder.setConnectStatus(connectStatus)).build());
-            }).start();
-        } else {
-            future.set(RpcResultBuilder.<ConnectToDeviceOutput>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Cannot find device.").build());
-        }
-
-        return future;
+        return executorService.submit(connectToDev(input));
     }
 
     @Override
     public Future<RpcResult<java.lang.Void>> setPipelineConfig(SetPipelineConfigInput input) {
-        String nodeId = input.getNid();
-        Optional<P4Device> optional = manager.findDevice(nodeId);
-        SettableFuture<RpcResult<Void>> future = SettableFuture.create();
-
-        if (optional.isPresent()) {
-            try {
-                optional.get().setPipelineConfig();
-                future.set(RpcResultBuilder.success((Void)null).build());
-            } catch (StatusRuntimeException e) {
-                String errMsg = String.format("RPC failed, Status = %s, Reason = %s", e.getStatus(), e.getMessage());
-                LOG.info("Set pipeline config " + errMsg);
-                future.set(RpcResultBuilder.<Void>failed()
-                        .withError(RpcError.ErrorType.APPLICATION, errMsg).build());
-            }
-        } else {
-            future.set(RpcResultBuilder.<Void>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Cannot find device").build());
-        }
-
-        return future;
+        return executorService.submit(setConfig(input));
     }
 
     @Override
     public Future<RpcResult<GetPipelineConfigOutput>> getPipelineConfig(GetPipelineConfigInput input) {
-        String nodeId = input.getNid();
-        Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
-        SettableFuture<RpcResult<GetPipelineConfigOutput>> future = SettableFuture.create();
-
-        if (optional.isPresent()) {
-            try {
-                GetPipelineConfigOutputBuilder outputBuilder = new GetPipelineConfigOutputBuilder();
-                String result = TextFormat.printToString(optional.get().getPipelineConfig().getConfigs(0).getP4Info());
-                outputBuilder.setP4Info(result);
-                future.set(RpcResultBuilder.success(outputBuilder.build()).build());
-            } catch (StatusRuntimeException e) {
-                String errMsg = String.format("RPC failed, Status = %s, Reason = %s", e.getStatus(), e.getMessage());
-                LOG.info("Get pipeline config " + errMsg);
-                future.set(RpcResultBuilder.<GetPipelineConfigOutput>failed()
-                        .withError(RpcError.ErrorType.APPLICATION, errMsg).build());
-            }
-        } else {
-            future.set(RpcResultBuilder.<GetPipelineConfigOutput>failed()
-                    .withError(RpcError.ErrorType.APPLICATION, "Cannot find device").build());
-        }
-
-        return future;
+        return executorService.submit(getConfig(input));
     }
 
     @Override
     public Future<RpcResult<QueryDevicesOutput>> queryDevices() {
-        QueryDevicesOutputBuilder outputBuilder = new QueryDevicesOutputBuilder();
-        outputBuilder.setNodes(manager.queryNodes());
-        return RpcResultBuilder.success(outputBuilder.build()).buildFuture();
+        return executorService.submit(queryDevs());
     }
 }

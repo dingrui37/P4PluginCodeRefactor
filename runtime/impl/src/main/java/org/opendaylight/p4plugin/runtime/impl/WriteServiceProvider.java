@@ -27,7 +27,7 @@ public class WriteServiceProvider implements P4pluginRuntimeWriteService {
     private ExecutorService executorService;
 
     public void init() {
-        executorService = Executors.newFixedThreadPool(3);
+        executorService = Executors.newFixedThreadPool(2);
         manager = DeviceManager.getInstance();
         LOG.info("P4plugin write service provider initiated.");
     }

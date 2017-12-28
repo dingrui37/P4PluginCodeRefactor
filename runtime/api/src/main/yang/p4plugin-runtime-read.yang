@@ -30,7 +30,7 @@ module p4plugin-runtime-read {
         }
     }
 
-    rpc read-action-profile {
+    rpc read-action-profile-member {
         input {
             uses types:node-id;
             leaf action-profile-name {

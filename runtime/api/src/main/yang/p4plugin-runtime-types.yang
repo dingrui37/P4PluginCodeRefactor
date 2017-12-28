@@ -31,14 +31,6 @@ module p4plugin-runtime-types {
         }
     }
 
-    typedef match-value-mask {
-        type union {
-            type inet:ipv4-address;
-            type mac-address;
-            type uint64;
-        }
-    }
-
     typedef mac-address {
         type string {
             pattern '[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}';

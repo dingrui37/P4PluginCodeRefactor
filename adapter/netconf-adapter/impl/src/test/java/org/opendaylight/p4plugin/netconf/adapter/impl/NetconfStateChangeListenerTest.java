@@ -48,18 +48,7 @@ import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.
 import org.opendaylight.yang.gen.v1.urn.opendaylight.netconf.node.topology.rev150114.NetconfNode;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.netconf.node.topology.rev150114.NetconfNodeBuilder;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.netconf.node.topology.rev150114.NetconfNodeConnectionStatus;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.AddNodeInput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.AddNodeOutput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.AddNodeOutputBuilder;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.GetPipelineConfigInput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.GetPipelineConfigOutput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.P4pluginRuntimeDeviceService;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.QueryNodesOutput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.RemoveNodeInput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.RemoveNodeOutput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.SetPipelineConfigInput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.SetPipelineConfigOutput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.SetPipelineConfigOutputBuilder;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.*;
 import org.opendaylight.yang.gen.v1.urn.p4plugin.yang.p4device.grpc.rev170908.GrpcInfo;
 import org.opendaylight.yang.gen.v1.urn.p4plugin.yang.p4device.grpc.rev170908.GrpcInfoBuilder;
 import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NodeId;
@@ -415,19 +404,19 @@ public class NetconfStateChangeListenerTest extends AbstractDataBrokerTest {
 
     private static class P4pluginRuntimeDeviceServiceMock implements P4pluginRuntimeDeviceService {
 
-        private List<AddNodeInput> addNodeInputList = new ArrayList<>();
+        private List<AddDeviceInput> addDeviceInputList = new ArrayList<>();
         private List<SetPipelineConfigInput> setPipelineConfigInputList = new ArrayList<>();
 
         @Override
-        public Future<RpcResult<AddNodeOutput>> addNode(AddNodeInput input) {
-            addNodeInputList.add(input);
-            AddNodeOutputBuilder builder = new AddNodeOutputBuilder();
+        public Future<RpcResult<Void>> addDevice(AddDeviceInput input) {
+            addDeviceInputList.add(input);
+            AddDeviceOutputBuilder builder = new AddDevOutputBuilder();
             if (input.getIp().getValue().equals("127.0.0.1")) {
                 builder.setResult(false);
             } else {
                 builder.setResult(true);
             }
-            RpcResultBuilder<AddNodeOutput> rpcResultBuilder = RpcResultBuilder.success();
+            RpcResultBuilder<Void> rpcResultBuilder = RpcResultBuilder.success();
             rpcResultBuilder.withResult(builder.build());
             SettableFuture<RpcResult<AddNodeOutput>> future = SettableFuture.create();
             future.set(rpcResultBuilder.build());

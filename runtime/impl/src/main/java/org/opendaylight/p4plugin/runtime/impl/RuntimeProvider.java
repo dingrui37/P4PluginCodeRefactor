@@ -10,6 +10,7 @@ package org.opendaylight.p4plugin.runtime.impl;
 import org.opendaylight.controller.md.sal.binding.api.DataBroker;
 import org.opendaylight.controller.md.sal.binding.api.NotificationPublishService;
 import org.opendaylight.p4plugin.runtime.impl.channel.P4RuntimeChannel;
+import org.opendaylight.p4plugin.runtime.impl.utils.NotificationPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +27,7 @@ public class RuntimeProvider {
 
     public void init() {
         new P4RuntimeChannel("localhost", 50051).shutdown();//grpc bug
-        NotificationServiceProvider.getInstance().setNotificationService(notificationPublishService);
+        NotificationPublisher.getInstance().setNotificationService(notificationPublishService);
         LOG.info("P4plugin runtime provider initiated.");
     }
 

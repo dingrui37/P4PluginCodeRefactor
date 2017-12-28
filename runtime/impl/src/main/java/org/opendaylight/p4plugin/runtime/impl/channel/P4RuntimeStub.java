@@ -9,7 +9,7 @@ package org.opendaylight.p4plugin.runtime.impl.channel;
 
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
-import org.opendaylight.p4plugin.runtime.impl.NotificationServiceProvider;
+import org.opendaylight.p4plugin.runtime.impl.utils.NotificationPublisher;
 import org.opendaylight.p4plugin.runtime.impl.cluster.ElectionId;
 import org.opendaylight.p4plugin.runtime.impl.cluster.ElectionIdGenerator;
 import org.opendaylight.p4plugin.runtime.impl.cluster.ElectionIdObserver;
@@ -143,7 +143,7 @@ public class P4RuntimeStub implements ElectionIdObserver {
                     byte[] payload = response.getPacket().getPayload().toByteArray();
                     builder.setNid(nodeId);
                     builder.setPayload(payload);
-                    NotificationServiceProvider.getInstance().notify(builder.build());
+                    NotificationPublisher.getInstance().notify(builder.build());
                     //For debug
                     LOG.info("Receive packet from device = {}, body = {}.", nodeId, Utils.bytesToHexString(payload));
                     break;
