@@ -50,7 +50,7 @@ public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
             String runtimeFile = input.getRuntimeFilePath();
             String configFile = input.getConfigFilePath();
             manager.addDevice(nodeId, deviceId, ip, port, runtimeFile, configFile);
-            LOG.info("Add device = [{}/{}/{}:{}/{}/{}] success." , nodeId, deviceId, ip, port, runtimeFile, configFile);
+            LOG.info("Add device = [{}-{}-{}:{}-{}-{}] success." , nodeId, deviceId, ip, port, runtimeFile, configFile);
             return rpcResultSuccess(null);
         };
     }

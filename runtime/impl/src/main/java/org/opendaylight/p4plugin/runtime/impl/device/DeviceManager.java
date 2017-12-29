@@ -53,7 +53,7 @@ public class DeviceManager {
     public void addDevice(String nodeId, Long deviceId, String ip, Integer port,
                           String runtimeFile, String configFile) throws IOException {
         if (isDeviceExist(nodeId, ip, port, deviceId)) {
-            throw new IllegalArgumentException("Invalid device param.");
+            throw new IllegalArgumentException("Device is existed.");
         }
 
         P4Info p4Info = Utils.parseRuntimeInfo(runtimeFile);

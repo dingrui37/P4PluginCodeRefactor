@@ -64,7 +64,7 @@ public class DeviceInterfaceDataOperator {
                 Future<RpcResult<ConnectToDeviceOutput>> connectToDeviceRpcResult = rpcProviderRegistry
                         .getRpcService(P4pluginRuntimeDeviceService.class)
                         .connectToDevice(constructRpcConnectToDeviceInput(nodeId));
-                if (connectToDeviceRpcResult.get().isSuccessful()) {
+                if (connectToDeviceRpcResult.get().getResult().isConnectStatus()) {
                     Future<RpcResult<Void>> setPipelineConfigRpcResult = rpcProviderRegistry
                             .getRpcService(P4pluginRuntimeDeviceService.class)
                             .setPipelineConfig(constructRpcSetPipelineConfigInput(nodeId));

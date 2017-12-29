@@ -196,7 +196,9 @@ public class P4RuntimeStub implements ElectionIdObserver {
         }
 
         public void shutdown() {
-            observer.onCompleted();
+            if(observer != null) {
+                observer.onCompleted();
+            }
         }
     }
 }
