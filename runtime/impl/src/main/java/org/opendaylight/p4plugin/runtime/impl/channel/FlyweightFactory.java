@@ -25,8 +25,10 @@ public class FlyweightFactory {
     }
 
     /**
-     * The ip address and port number determines a gRPC channel, in other words,
-     * determines a tcp connection.
+     * The ip address and port number determines a gRPC channel.
+     * @param ip ip address.
+     * @param port tcp port.
+     * @return return a P4RuntimeChannel instance from pool.
      */
     public synchronized P4RuntimeChannel getChannel(String ip, Integer port) {
         String key = String.format("%s:%d", ip, port);
@@ -39,8 +41,7 @@ public class FlyweightFactory {
     }
 
     /**
-     * When there is no stream channel using a gRPC channel, then free
-     * the gRPC channel.
+     * When there is no stream channel using a specific gRPC channel, then free it.
      */
     public synchronized void gc() {
         List<String> keys = pool.keySet().stream()

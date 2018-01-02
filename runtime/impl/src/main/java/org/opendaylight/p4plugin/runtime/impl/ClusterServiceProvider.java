@@ -7,8 +7,6 @@
  */
 package org.opendaylight.p4plugin.runtime.impl;
 
-import com.google.common.base.Preconditions;
-import com.google.common.util.concurrent.Futures;
 import org.opendaylight.p4plugin.runtime.impl.cluster.ElectionId;
 import org.opendaylight.p4plugin.runtime.impl.cluster.ElectionIdGenerator;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.cluster.rev170808.GetElectionIdOutput;

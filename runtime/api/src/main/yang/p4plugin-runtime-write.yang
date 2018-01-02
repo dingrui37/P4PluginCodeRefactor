@@ -20,7 +20,7 @@ module p4plugin-runtime-write {
         revision-date 2017-08-08;
     }
 
-    grouping action {
+    grouping action-config {
         leaf action-name {
             type string;
         }
@@ -32,7 +32,7 @@ module p4plugin-runtime-write {
             }
 
             leaf param-value {
-                type types:param-value;
+                type string;
             }
         }
     }

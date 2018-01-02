@@ -123,7 +123,8 @@ public class P4RuntimeStub implements ElectionIdObserver {
         }
 
         /**
-         * Not support metadata in p4_v14, we will support it in the near future.
+         * Transmit a packet to P4 device, not support metadata in now.
+         * @param payload packet
          */
         public void transmitPacket(byte[] payload) {
             StreamMessageRequest.Builder requestBuilder = StreamMessageRequest.newBuilder();
