@@ -11,8 +11,7 @@ import com.google.protobuf.TextFormat;
 import org.opendaylight.p4plugin.p4info.proto.P4Info;
 import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
 import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.P4pluginRuntimeDeviceService;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.*;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.device.rev170808.*;
 import org.opendaylight.yangtools.yang.common.RpcResult;
 import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.slf4j.Logger;
@@ -21,7 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Optional;
 import java.util.concurrent.*;
 
-public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
+public class DeviceServiceProvider implements P4pluginDeviceService {
     private static final Logger LOG = LoggerFactory.getLogger(DeviceServiceProvider.class);
     private DeviceManager manager;
     private ExecutorService executorService;
@@ -105,7 +104,7 @@ public class DeviceServiceProvider implements P4pluginRuntimeDeviceService {
     private Callable<RpcResult<QueryDevicesOutput>> queryDevs() {
         return ()->{
             QueryDevicesOutputBuilder outputBuilder = new QueryDevicesOutputBuilder();
-            outputBuilder.setNodes(manager.queryNodes());
+            outputBuilder.setNode(manager.queryNodes());
             return rpcResultSuccess(outputBuilder.build());
         };
     }

@@ -1,7 +1,7 @@
-module p4plugin-runtime-device {
+module p4plugin-device {
     yang-version 1;
-    namespace "urn:opendaylight:p4plugin:runtime:device";
-    prefix "device";
+    namespace "urn:opendaylight:p4plugin:device";
+    prefix "p4p-device";
 
     organization "ZTE corporation";
     contact "ding.rui@zte.com.cn";
@@ -15,8 +15,8 @@ module p4plugin-runtime-device {
         revision-date 2013-07-15;
     }
 
-    import p4plugin-runtime-types {
-        prefix "types";
+    import p4plugin-types {
+        prefix "p4p-types";
         revision-date 2017-08-08;
     }
 
@@ -52,7 +52,7 @@ module p4plugin-runtime-device {
     }
 
     grouping device {
-        uses types:node-id;
+        uses p4p-types:node-id;
         uses target;
         uses dataplane-config;
     }
@@ -65,13 +65,13 @@ module p4plugin-runtime-device {
 
     rpc remove-device {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
         }
     }
 
     rpc query-devices {
         output {
-            leaf-list nodes {
+            leaf-list node {
                 type string;
             }
         }
@@ -79,7 +79,7 @@ module p4plugin-runtime-device {
 
     rpc connect-to-device {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
         }
 
         output {
@@ -91,13 +91,13 @@ module p4plugin-runtime-device {
 
     rpc set-pipeline-config {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
         }
     }
 
     rpc get-pipeline-config {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
         }
 
         output {

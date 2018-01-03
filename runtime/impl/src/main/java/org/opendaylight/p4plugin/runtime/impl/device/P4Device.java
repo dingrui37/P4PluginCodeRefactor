@@ -9,7 +9,6 @@ package org.opendaylight.p4plugin.runtime.impl.device;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.TextFormat;
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.StatusRuntimeException;
 import org.opendaylight.p4plugin.p4info.proto.Table;
@@ -19,21 +18,21 @@ import org.opendaylight.p4plugin.runtime.impl.channel.P4RuntimeStub;
 import org.opendaylight.p4plugin.runtime.impl.utils.Utils;
 import org.opendaylight.p4plugin.p4config.proto.P4DeviceConfig;
 import org.opendaylight.p4plugin.p4info.proto.P4Info;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.*;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.ActionProfileGroup;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.ActionProfileMember;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.TableEntry;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.action.ActionParam;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.Fields;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.fields.MatchType;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.fields.match.type.EXACT;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.fields.match.type.LPM;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.fields.match.type.RANGE;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.match.field.fields.match.type.TERNARY;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.table.entry.ActionType;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.table.entry.action.type.ACTIONPROFILEGROUP;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.table.entry.action.type.ACTIONPROFILEMEMBER;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.write.rev170808.table.entry.action.type.DIRECTACTION;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.*;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.ActionProfileGroup;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.ActionProfileMember;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.TableEntry;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.action.ActionParam;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.match.field.Field;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.match.field.field.MatchType;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.match.field.field.match.type.EXACT;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.match.field.field.match.type.LPM;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.match.field.field.match.type.RANGE;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.match.field.field.match.type.TERNARY;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.table.entry.ActionType;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.table.entry.action.type.ACTIONPROFILEGROUP;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.table.entry.action.type.ACTIONPROFILEMEMBER;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.table.entry.action.type.DIRECTACTION;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -537,7 +536,7 @@ public class P4Device  {
             int paramId = getParamId(actionName, paramName);
             int paramWidth = getParamWidth(actionName, paramName);
             paramBuilder.setParamId(paramId);
-            String valueStr = new String(p.getParamValue().getValue());
+            String valueStr = p.getParamValue();
             byte[] valueBytes = Utils.strToByteArray(valueStr, paramWidth);
             paramBuilder.setValue(ByteString.copyFrom(valueBytes));
             actionBuilder.addParams(paramBuilder);
@@ -643,7 +642,7 @@ public class P4Device  {
         return fieldMatchBuilder.build();
     }
 
-    private FieldMatch buildFieldMatch(Fields fields, String tableName) {
+    private FieldMatch buildFieldMatch(Field fields, String tableName) {
         MatchType matchType = fields.getMatchType();
         String fieldName = fields.getFieldName();
 
@@ -665,7 +664,7 @@ public class P4Device  {
         int tableId = getTableId(tableName);
         org.opendaylight.p4plugin.p4runtime.proto.TableEntry.Builder tableEntryBuilder =
                 org.opendaylight.p4plugin.p4runtime.proto.TableEntry.newBuilder();
-        List<Fields> fields = entry.getFields();
+        List<Field> fields = entry.getField();
         fields.forEach(field -> tableEntryBuilder.addMatch(buildFieldMatch(field, tableName)));
         ActionType actionType = entry.getActionType();
         org.opendaylight.p4plugin.p4runtime.proto.TableAction tableAction = buildTableAction(actionType);
@@ -681,7 +680,7 @@ public class P4Device  {
         int tableId = getTableId(tableName);
         org.opendaylight.p4plugin.p4runtime.proto.TableEntry.Builder tableEntryBuilder =
                 org.opendaylight.p4plugin.p4runtime.proto.TableEntry.newBuilder();
-        List<Fields> fields = entryKey.getFields();
+        List<Field> fields = entryKey.getField();
         fields.forEach(field -> tableEntryBuilder.addMatch(buildFieldMatch(field, tableName)));
         tableEntryBuilder.setTableId(tableId);
         return tableEntryBuilder.build();
@@ -703,7 +702,7 @@ public class P4Device  {
             String paramName = actionParam.getParamName();
             int paramId = getParamId(actionName, paramName);
             int paramWidth = getParamWidth(actionName, paramName);
-            String valueStr = new String(actionParam.getParamValue().getValue());
+            String valueStr = actionParam.getParamValue();
             byte[] valueBytes = Utils.strToByteArray(valueStr, paramWidth);
             paramBuilder.setValue(ByteString.copyFrom(valueBytes));
             paramBuilder.setParamId(paramId);
@@ -737,7 +736,7 @@ public class P4Device  {
         groupBuilder.setGroupId(groupId.intValue());
         groupBuilder.setMaxSize(maxSize);
 
-        group.getGroupMembers().forEach(groupMember -> {
+        group.getGroupMember().forEach(groupMember -> {
             org.opendaylight.p4plugin.p4runtime.proto.ActionProfileGroup.Member.Builder builder =
                     org.opendaylight.p4plugin.p4runtime.proto.ActionProfileGroup.Member.newBuilder();
             builder.setWatch(groupMember.getWatch().intValue());

@@ -48,7 +48,7 @@ import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.
 import org.opendaylight.yang.gen.v1.urn.opendaylight.netconf.node.topology.rev150114.NetconfNode;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.netconf.node.topology.rev150114.NetconfNodeBuilder;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.netconf.node.topology.rev150114.NetconfNodeConnectionStatus;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.*;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.device.rev170808.*;
 import org.opendaylight.yang.gen.v1.urn.p4plugin.yang.p4device.grpc.rev170908.GrpcInfo;
 import org.opendaylight.yang.gen.v1.urn.p4plugin.yang.p4device.grpc.rev170908.GrpcInfoBuilder;
 import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NodeId;
@@ -113,7 +113,7 @@ public class NetconfStateChangeListenerTest extends AbstractDataBrokerTest {
         when(optionalDataBrokerObject.get()).thenReturn(dataBroker);
 
         p4pluginRuntimeDeviceServiceMock = new P4pluginRuntimeDeviceServiceMock();
-        when(rpcProviderRegistry.getRpcService(P4pluginRuntimeDeviceService.class))
+        when(rpcProviderRegistry.getRpcService(P4pluginDeviceService.class))
                 .thenReturn(p4pluginRuntimeDeviceServiceMock);
 
         dataProcess = new DataProcess(dataBroker, mountPointService);
@@ -402,7 +402,7 @@ public class NetconfStateChangeListenerTest extends AbstractDataBrokerTest {
         writeTransaction.submit();
     }
 
-    private static class P4pluginRuntimeDeviceServiceMock implements P4pluginRuntimeDeviceService {
+    private static class P4pluginRuntimeDeviceServiceMock implements P4pluginDeviceService {
 
         private List<AddDeviceInput> addDeviceInputList = new ArrayList<>();
         private List<SetPipelineConfigInput> setPipelineConfigInputList = new ArrayList<>();

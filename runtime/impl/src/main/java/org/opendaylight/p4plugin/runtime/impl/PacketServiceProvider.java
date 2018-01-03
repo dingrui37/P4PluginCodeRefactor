@@ -7,14 +7,10 @@
  */
 package org.opendaylight.p4plugin.runtime.impl;
 
-import com.google.common.base.Preconditions;
-import com.google.common.util.concurrent.Futures;
-import io.grpc.StatusRuntimeException;
 import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
 import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.packet.rev170808.P4TransmitPacketInput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.packet.rev170808.P4pluginRuntimePacketService;
-import org.opendaylight.yangtools.yang.common.RpcError;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.packet.rev170808.P4TransmitPacketInput;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.packet.rev170808.P4pluginPacketService;
 import org.opendaylight.yangtools.yang.common.RpcResult;
 import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.slf4j.Logger;
@@ -25,7 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-public class PacketServiceProvider implements P4pluginRuntimePacketService {
+public class PacketServiceProvider implements P4pluginPacketService {
     private static final Logger LOG = LoggerFactory.getLogger(PacketServiceProvider.class);
     private DeviceManager manager;
     private ExecutorService executorService;

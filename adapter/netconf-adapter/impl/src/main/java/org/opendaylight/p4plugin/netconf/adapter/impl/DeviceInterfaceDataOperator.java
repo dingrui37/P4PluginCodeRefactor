@@ -12,7 +12,7 @@ import java.util.concurrent.Future;
 
 import org.opendaylight.controller.sal.binding.api.RpcProviderRegistry;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.interfaces.rev140508.InterfacesState;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.device.rev170808.*;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.device.rev170808.*;
 import org.opendaylight.yang.gen.v1.urn.p4plugin.netconf.adapter.rev170908.NodeInterfacesState;
 import org.opendaylight.yang.gen.v1.urn.p4plugin.netconf.adapter.rev170908.node.interfaces.state.Node;
 import org.opendaylight.yang.gen.v1.urn.p4plugin.netconf.adapter.rev170908.node.interfaces.state.NodeKey;
@@ -58,15 +58,15 @@ public class DeviceInterfaceDataOperator {
     public void sendP4DeviceInfo(String nodeId, GrpcInfo grpcInfo) {
         try {
             Future<RpcResult<Void>> addDeviceRpcResult = rpcProviderRegistry
-                    .getRpcService(P4pluginRuntimeDeviceService.class)
+                    .getRpcService(P4pluginDeviceService.class)
                     .addDevice(constructRpcAddNodeInput(grpcInfo));
             if (addDeviceRpcResult.get().isSuccessful()) {
                 Future<RpcResult<ConnectToDeviceOutput>> connectToDeviceRpcResult = rpcProviderRegistry
-                        .getRpcService(P4pluginRuntimeDeviceService.class)
+                        .getRpcService(P4pluginDeviceService.class)
                         .connectToDevice(constructRpcConnectToDeviceInput(nodeId));
                 if (connectToDeviceRpcResult.get().getResult().isConnectStatus()) {
                     Future<RpcResult<Void>> setPipelineConfigRpcResult = rpcProviderRegistry
-                            .getRpcService(P4pluginRuntimeDeviceService.class)
+                            .getRpcService(P4pluginDeviceService.class)
                             .setPipelineConfig(constructRpcSetPipelineConfigInput(nodeId));
                     if (setPipelineConfigRpcResult.get().isSuccessful()) {
                         LOG.info("Rpc setPipelineConfig call success, node: {}", nodeId);

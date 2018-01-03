@@ -1,7 +1,7 @@
-module p4plugin-runtime-write {
+module p4plugin-runtime {
     yang-version 1;
-    namespace "urn:opendaylight:p4plugin:runtime:write";
-    prefix "write";
+    namespace "urn:opendaylight:p4plugin:runtime";
+    prefix "p4p-runtime";
 
     organization "ZTE corporation";
     contact "ding.rui@zte.com.cn";
@@ -10,17 +10,17 @@ module p4plugin-runtime-write {
         description "Initial revision.";
     }
 
-    import p4plugin-runtime-device {
-        prefix "device";
+    import p4plugin-device {
+        prefix "p4p-device";
         revision-date 2017-08-08;
     }
 
-    import p4plugin-runtime-types {
-        prefix "types";
+    import p4plugin-types {
+        prefix "p4p-types";
         revision-date 2017-08-08;
     }
 
-    grouping action-config {
+    grouping action {
         leaf action-name {
             type string;
         }
@@ -38,7 +38,7 @@ module p4plugin-runtime-write {
     }
 
     grouping match-field {
-        list fields {
+        list field {
             leaf field-name {
                 type string;
             }
@@ -46,13 +46,13 @@ module p4plugin-runtime-write {
             choice match-type {
                 case EXACT {
                     leaf exact-value {
-                        type types:match-value;
+                        type p4p-types:value;
                     }
                 }
 
                 case LPM {
                     leaf lpm-value {
-                        type types:match-value;
+                        type p4p-types:value;
                     }
 
                     leaf prefix-len {
@@ -62,7 +62,7 @@ module p4plugin-runtime-write {
 
                 case TERNARY {
                     leaf ternary-value {
-                        type types:match-value;
+                        type p4p-types:value;
                     }
 
                     leaf mask {
@@ -150,27 +150,9 @@ module p4plugin-runtime-write {
         }
     }
 
-    grouping action-profile-group-config {
-        uses action-profile-group-key;
-        list group-members {
-            key member-id;
-            leaf member-id {
-                type uint32;
-            }
-
-            leaf weight {
-                type int32;
-            }
-
-            leaf watch {
-                type uint32;
-            }
-        }
-    }
-
     grouping action-profile-group {
         uses action-profile-group-key;
-        list group-members {
+        list group-member {
             key member-id;
             leaf member-id {
                 type uint32;
@@ -194,64 +176,109 @@ module p4plugin-runtime-write {
 
     rpc add-table-entry {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
             uses table-entry;
         }
     }
 
     rpc modify-table-entry {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
             uses table-entry;
         }
     }
 
     rpc delete-table-entry {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
             uses table-entry-key;
         }
     }
 
     rpc add-action-profile-member {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
             uses action-profile-member;
         }
     }
 
     rpc modify-action-profile-member {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
             uses action-profile-member;
         }
     }
 
     rpc delete-action-profile-member {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
             uses action-profile-member-key;
         }
     }
 
     rpc add-action-profile-group {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
             uses action-profile-group;
         }
     }
 
     rpc modify-action-profile-group {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
             uses action-profile-group;
         }
     }
 
     rpc delete-action-profile-group {
         input {
-            uses types:node-id;
+            uses p4p-types:node-id;
             uses action-profile-group-key;
+        }
+    }
+
+    rpc read-table-entry {
+        input {
+            uses p4p-types:node-id;
+            leaf table-name {
+                type string;
+            }
+        }
+
+        output {
+            leaf-list entry {
+                type string;
+            }
+        }
+    }
+
+    rpc read-action-profile-member {
+        input {
+            uses p4p-types:node-id;
+            leaf action-profile-name {
+                type string;
+            }
+        }
+
+        output {
+            leaf-list member {
+                type string;
+            }
+        }
+    }
+
+    rpc read-action-profile-group {
+        input {
+            uses p4p-types:node-id;
+            leaf action-profile-name {
+                type string;
+            }
+        }
+
+        output {
+            leaf-list group {
+                type string;
+            }
         }
     }
 }

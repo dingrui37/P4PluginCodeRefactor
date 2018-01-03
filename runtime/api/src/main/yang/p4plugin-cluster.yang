@@ -1,7 +1,7 @@
-module p4plugin-runtime-cluster {
+module p4plugin-cluster {
     yang-version 1;
-    namespace "urn:opendaylight:p4plugin:runtime:cluster";
-    prefix "cluster";
+    namespace "urn:opendaylight:p4plugin:cluster";
+    prefix "p4p-cluster";
 
     organization "ZTE corporation";
     contact "ding.rui@zte.com.cn";

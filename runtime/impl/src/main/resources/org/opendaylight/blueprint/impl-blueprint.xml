@@ -16,42 +16,31 @@ and is available at http://www.eclipse.org/legal/epl-v10.html
         odl:type="default" />
 
     <reference id="notificationPublishService"
-        interface="org.opendaylight.controller.md.sal.binding.api.NotificationPublishService"/>    
-        
-    <bean id="runtimeProvider"
-        class="org.opendaylight.p4plugin.runtime.impl.RuntimeProvider"
-        init-method="init" destroy-method="close">
-        <argument ref="dataBroker" />
-        <argument ref="notificationPublishService" />
-    </bean>
+        interface="org.opendaylight.controller.md.sal.binding.api.NotificationPublishService"/>
 
     <bean id="deviceServiceProvider"
           class="org.opendaylight.p4plugin.runtime.impl.DeviceServiceProvider"
           init-method="init" destroy-method="close" >
     </bean>
-    <odl:rpc-implementation ref="deviceServiceProvider" />
 
-    <bean id="writeServiceProvider"
-          class="org.opendaylight.p4plugin.runtime.impl.WriteServiceProvider"
-          init-method="init" destroy-method="close">
+    <bean id="runtimeServiceProvider"
+        class="org.opendaylight.p4plugin.runtime.impl.RuntimeServiceProvider"
+        init-method="init" destroy-method="close">
+        <argument ref="dataBroker" />
+        <argument ref="notificationPublishService" />
     </bean>
-    <odl:rpc-implementation ref="writeServiceProvider" />
-
-    <bean id="readServiceProvider"
-          class="org.opendaylight.p4plugin.runtime.impl.ReadServiceProvider"
-          init-method="init" destroy-method="close">
-    </bean>
-    <odl:rpc-implementation ref="writeServiceProvider" />
 
     <bean id="packetServiceProvider"
           class="org.opendaylight.p4plugin.runtime.impl.PacketServiceProvider"
           init-method="init" destroy-method="close">
     </bean>
-    <odl:rpc-implementation ref="packetServiceProvider" />
 
     <bean id="clusterServiceProvider"
           class="org.opendaylight.p4plugin.runtime.impl.ClusterServiceProvider">
     </bean>
-    <odl:rpc-implementation ref="clusterServiceProvider" />
 
+    <odl:rpc-implementation ref="deviceServiceProvider" />
+    <odl:rpc-implementation ref="runtimeServiceProvider" />
+    <odl:rpc-implementation ref="packetServiceProvider" />
+    <odl:rpc-implementation ref="clusterServiceProvider" />
 </blueprint>

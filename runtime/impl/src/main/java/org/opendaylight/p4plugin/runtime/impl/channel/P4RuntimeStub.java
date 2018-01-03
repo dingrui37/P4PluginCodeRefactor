@@ -16,7 +16,7 @@ import org.opendaylight.p4plugin.runtime.impl.cluster.ElectionIdObserver;
 import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
 import org.opendaylight.p4plugin.runtime.impl.utils.Utils;
 import org.opendaylight.p4plugin.p4runtime.proto.*;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.packet.rev170808.P4PacketReceivedBuilder;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.packet.rev170808.P4PacketReceivedBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.concurrent.CountDownLatch;
