@@ -9,6 +9,7 @@ package org.opendaylight.p4plugin.runtime.impl.channel;
 
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
+import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
 import org.opendaylight.p4plugin.runtime.impl.utils.NotificationPublisher;
 import org.opendaylight.p4plugin.runtime.impl.cluster.ElectionId;
 import org.opendaylight.p4plugin.runtime.impl.cluster.ElectionIdGenerator;
@@ -19,6 +20,8 @@ import org.opendaylight.p4plugin.p4runtime.proto.*;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.packet.rev170808.P4PacketReceivedBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -53,6 +56,9 @@ public class P4RuntimeStub implements ElectionIdObserver {
         streamChannel.sendMasterArbitration(electionId);
     }
 
+    public P4RuntimeChannel getRuntimeChannel() {
+        return runtimeChannel;
+    }
     public ElectionId getElectionId() {
         return electionId;
     }
@@ -101,7 +107,7 @@ public class P4RuntimeStub implements ElectionIdObserver {
             boolean state;
 
             try {
-                state = !countDownLatch.await(1, TimeUnit.SECONDS);
+                state = !countDownLatch.await(5, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
@@ -155,15 +161,14 @@ public class P4RuntimeStub implements ElectionIdObserver {
             }
         }
 
-        private void onStreamChannelError(Throwable t) {
-            runtimeChannel.removeStub(P4RuntimeStub.this);
-            DeviceManager.getInstance().removeDevice(nodeId);
+        public void onStreamChannelError(Throwable t) {
+            DeviceManager.getInstance().findDevice(nodeId).ifPresent(dev->dev.setDeviceState(P4Device.State.Unknown));
             countDownLatch.countDown();
             LOG.info("Stream channel on error, reason = {}, node = {}.", t.getMessage(), nodeId);
         }
 
-        public void onStreamChannelCompleted() {
-            runtimeChannel.removeStub(P4RuntimeStub.this);
+        public void onStreamChannelComplete() {
+            DeviceManager.getInstance().findDevice(nodeId).ifPresent(dev->dev.setDeviceState(P4Device.State.Unknown));
             countDownLatch.countDown();
             LOG.info("Stream channel on complete, node = {}.", nodeId);
         }
@@ -174,8 +179,8 @@ public class P4RuntimeStub implements ElectionIdObserver {
          * away using a MasterArbitrationUpdate message.
          */
         public void openStreamChannel() {
-            runtimeChannel.addStub(P4RuntimeStub.this);
             countDownLatch = new CountDownLatch(1);
+            runtimeChannel.addStub(P4RuntimeStub.this);
             StreamObserver<StreamMessageResponse> response = new StreamObserver<StreamMessageResponse>() {
                 @Override
                 public void onNext(StreamMessageResponse response) {
@@ -189,7 +194,7 @@ public class P4RuntimeStub implements ElectionIdObserver {
 
                 @Override
                 public void onCompleted() {
-                    onStreamChannelCompleted();
+                    onStreamChannelComplete();
                 }
             };
             observer = getAsyncStub().streamChannel(response);

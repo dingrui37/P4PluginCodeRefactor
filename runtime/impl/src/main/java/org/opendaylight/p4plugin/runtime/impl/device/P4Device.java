@@ -76,6 +76,10 @@ public class P4Device  {
         this.state = state;
     }
 
+    public P4RuntimeStub getRuntimeStub() {
+        return runtimeStub;
+    }
+
     public boolean isConfigured() {
         return runtimeInfo != null
                 && deviceConfig != null
@@ -516,11 +520,16 @@ public class P4Device  {
     }
 
     public boolean connectToDevice() {
-        return runtimeStub.connect();
+        if (state == State.Unknown) {
+            return runtimeStub.connect();
+        }
+        return true;
     }
 
     public void shutdown() {
-        runtimeStub.shutdown();
+        if (state != State.Unknown) {
+            runtimeStub.shutdown();
+        }
     }
 
     private TableAction directActionParse(DIRECTACTION action) {

@@ -9,6 +9,8 @@ package org.opendaylight.p4plugin.runtime.impl.channel;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +21,7 @@ import java.util.concurrent.TimeUnit;
  * the P4RuntimeStubs. Multiple stubs can share the same channel.
  */
 public class P4RuntimeChannel {
+    private static final Logger LOG = LoggerFactory.getLogger(P4RuntimeStub.class);
     private ManagedChannel channel;
     private List<P4RuntimeStub> stubs;
 
@@ -29,6 +32,8 @@ public class P4RuntimeChannel {
     private P4RuntimeChannel(ManagedChannelBuilder<?> channelBuilder) {
         channel = channelBuilder.build();
         stubs = new ArrayList<>();
+        LOG.info("XXXXXX" + channel.getState(true).toString());
+
     }
 
     public ManagedChannel getManagedChannel() {

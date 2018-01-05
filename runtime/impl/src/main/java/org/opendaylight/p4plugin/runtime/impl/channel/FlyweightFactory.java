@@ -7,6 +7,9 @@
  */
 package org.opendaylight.p4plugin.runtime.impl.channel;
 
+import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
+import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
+
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -41,15 +44,19 @@ public class FlyweightFactory {
     }
 
     /**
-     * When there is no stream channel using a specific gRPC channel, then free it.
+     * When there is no stream channel using a specific gRPC channel and
+     * no device including unconnected use it, then free it.
      */
     public synchronized void gc() {
         List<String> keys = pool.keySet().stream()
                 .filter(key->pool.get(key).getStubsCount() == 0)
                 .collect(Collectors.toList());
         keys.forEach(key->{
-            pool.get(key).shutdown();
-            pool.remove(key);
+            P4RuntimeChannel channel = pool.get(key);
+            if (DeviceManager.getInstance().isChannelUseless(channel)) {
+                channel.shutdown();
+                pool.remove(key);
+            }
         });
     }
 
