@@ -40,7 +40,7 @@ public class RuntimeStub implements ElectionIdObserver {
         this.nodeId = nodeId;
         this.deviceId = deviceId;
         initStub();
-        addElectionIdObserver();
+        initElectionId();
     }
 
     private void initStub() {
@@ -48,8 +48,10 @@ public class RuntimeStub implements ElectionIdObserver {
         this.asyncStub = P4RuntimeGrpc.newStub(channel);
     }
 
-    private void addElectionIdObserver() {
-        ElectionIdGenerator.getInstance().addObserver(this);
+    private void initElectionId() {
+        ElectionIdGenerator generator = ElectionIdGenerator.getInstance();
+        generator.addObserver(this);
+        electionId = generator.getElectionId();
     }
 
     public void notifyWhenStateChanged(ConnectivityState source, Runnable callback) {
