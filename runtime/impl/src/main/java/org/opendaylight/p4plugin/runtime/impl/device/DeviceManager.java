@@ -8,7 +8,6 @@
 package org.opendaylight.p4plugin.runtime.impl.device;
 
 import com.google.protobuf.ByteString;
-import org.opendaylight.p4plugin.runtime.impl.channel.P4RuntimeChannel;
 import org.opendaylight.p4plugin.runtime.impl.utils.Utils;
 import org.opendaylight.p4plugin.p4info.proto.P4Info;
 import org.slf4j.Logger;
@@ -45,15 +44,6 @@ public class DeviceManager {
 
     public boolean isDeviceExist(String nodeId, String ip, Integer port, Long deviceId) {
         return isNodeExist(nodeId) && isTargetExist(ip, port, deviceId);
-    }
-
-    public boolean isChannelUseless(P4RuntimeChannel channel) {
-        for(P4Device device : devices.values()) {
-            if (device.getRuntimeStub().getRuntimeChannel() == channel) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public Optional<P4Device> findDevice(String nodeId) {
@@ -93,7 +83,7 @@ public class DeviceManager {
         if ((optional.isPresent()) && (optional.get().isConfigured())) {
             return optional;
         } else {
-            LOG.info("Cannot find a configured device, node id = {}", nodeId);
+            LOG.info("Cannot find a configured device, node id = {}.", nodeId);
             return Optional.empty();
         }
     }

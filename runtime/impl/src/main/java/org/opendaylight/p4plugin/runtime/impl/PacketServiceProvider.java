@@ -43,6 +43,7 @@ public class PacketServiceProvider implements P4pluginPacketService {
             String nodeId = input.getNid();
             Optional<P4Device> optional = manager.findConfiguredDevice(nodeId);
             optional.orElseThrow(IllegalArgumentException::new).transmitPacket(input.getPayload());
+            LOG.info("Transmit packet to device = {} RPC success.", nodeId);
             return RpcResultBuilder.success((Void)null).build();
         });
     }

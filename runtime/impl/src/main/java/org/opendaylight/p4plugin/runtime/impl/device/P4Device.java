@@ -10,11 +10,11 @@ package org.opendaylight.p4plugin.runtime.impl.device;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-import io.grpc.StatusRuntimeException;
+import io.grpc.ConnectivityState;
 import org.opendaylight.p4plugin.p4info.proto.Table;
 import org.opendaylight.p4plugin.p4runtime.proto.*;
 import org.opendaylight.p4plugin.p4runtime.proto.Action;
-import org.opendaylight.p4plugin.runtime.impl.channel.P4RuntimeStub;
+import org.opendaylight.p4plugin.runtime.impl.stub.RuntimeStub;
 import org.opendaylight.p4plugin.runtime.impl.utils.Utils;
 import org.opendaylight.p4plugin.p4config.proto.P4DeviceConfig;
 import org.opendaylight.p4plugin.p4info.proto.P4Info;
@@ -36,21 +36,55 @@ import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
 import java.math.BigInteger;
 import java.util.*;
 
 public class P4Device  {
     private static final Logger LOG = LoggerFactory.getLogger(P4Device.class);
-    private P4RuntimeStub runtimeStub;
+    private RuntimeStub runtimeStub;
     private P4Info runtimeInfo;
     private ByteString deviceConfig;
     private String ip;
     private Integer port;
     private Long deviceId;
     private String nodeId;
-    private State state = State.Unknown;
-    private P4Device() {}
+    private boolean isConfigured;
+    private boolean isConnected;
+
+    private P4Device(String ip, Integer port, Long deviceId, String nodeId,
+                     P4Info runtimeInfo, ByteString deviceConfig) {
+        this.ip = ip;
+        this.port = port;
+        this.deviceId = deviceId;
+        this.nodeId = nodeId;
+        this.runtimeInfo = runtimeInfo;
+        this.deviceConfig = deviceConfig;
+        initRuntimeStub();
+    }
+
+    private void initRuntimeStub() {
+        this.runtimeStub = new RuntimeStub(ip, port, deviceId, nodeId);
+        runtimeStub.notifyWhenStateChanged(ConnectivityState.READY, ()->{
+            isConnected = false;
+            isConfigured = false;
+        });
+    }
+
+    public ConnectivityState getConnectState() {
+        return runtimeStub.getConnectState();
+    }
+
+    public boolean isConfigured() {
+        return runtimeInfo != null && deviceConfig != null && isConfigured;
+    }
+
+    public String getNodeId() {
+        return nodeId;
+    }
+
+    public Long getDeviceId() {
+        return deviceId;
+    }
 
     public String getIp() {
         return ip;
@@ -58,32 +92,6 @@ public class P4Device  {
 
     public Integer getPort() {
         return port;
-    }
-
-    public Long getDeviceId() {
-        return deviceId;
-    }
-
-    public String getNodeId() {
-        return nodeId;
-    }
-
-    public State getDeviceState() {
-        return state;
-    }
-
-    public void setDeviceState(State state) {
-        this.state = state;
-    }
-
-    public P4RuntimeStub getRuntimeStub() {
-        return runtimeStub;
-    }
-
-    public boolean isConfigured() {
-        return runtimeInfo != null
-                && deviceConfig != null
-                && getDeviceState() == State.Configured;
     }
 
     private int getTableId(String tableName) {
@@ -256,8 +264,8 @@ public class P4Device  {
                 .build();
 
         SetForwardingPipelineConfigResponse response;
-        response = runtimeStub.getBlockingStub().setForwardingPipelineConfig(request);
-        setDeviceState(State.Configured);
+        response = runtimeStub.setPipelineConfig(request);
+        isConfigured = true;
         return response;
     }
 
@@ -266,7 +274,7 @@ public class P4Device  {
                 .addDeviceIds(deviceId)
                 .build();
         GetForwardingPipelineConfigResponse response;
-        response = runtimeStub.getBlockingStub().getForwardingPipelineConfig(request);
+        response = runtimeStub.getPipelineConfig(request);
         return response;
     }
 
@@ -278,7 +286,7 @@ public class P4Device  {
         entityBuilder.setTableEntry(entry);
         updateBuilder.setType(type);
         updateBuilder.setEntity(entityBuilder);
-        requestBuilder.setDeviceId(getDeviceId());
+        requestBuilder.setDeviceId(deviceId);
         requestBuilder.addUpdates(updateBuilder);
         return requestBuilder.build();
     }
@@ -291,7 +299,7 @@ public class P4Device  {
         entityBuilder.setActionProfileGroup(group);
         updateBuilder.setEntity(entityBuilder);
         updateBuilder.setType(type);
-        requestBuilder.setDeviceId(getDeviceId());
+        requestBuilder.setDeviceId(deviceId);
         requestBuilder.addUpdates(updateBuilder);
         return requestBuilder.build();
     }
@@ -304,7 +312,7 @@ public class P4Device  {
         entityBuilder.setActionProfileMember(member);
         updateBuilder.setType(type);
         updateBuilder.setEntity(entityBuilder);
-        requestBuilder.setDeviceId(getDeviceId());
+        requestBuilder.setDeviceId(deviceId);
         requestBuilder.addUpdates(updateBuilder);
         return requestBuilder.build();
     }
@@ -312,39 +320,21 @@ public class P4Device  {
     public WriteResponse addTableEntry(TableEntry inputEntry) {
         WriteResponse response;
         WriteRequest request = createWriteRequest(toProtoEntry(inputEntry), Update.Type.INSERT);
-        try {
-            response = write(request);
-        } catch (StatusRuntimeException e) {
-            LOG.info("Add table entry RPC exception, Status = {}, Reason = {}",
-                    e.getStatus(), e.getMessage());
-            throw new RuntimeException(e);
-        }
+        response = write(request);
         return response;
     }
 
     public WriteResponse modifyTableEntry(TableEntry inputEntry) {
         WriteResponse response;
         WriteRequest request = createWriteRequest(toProtoEntry(inputEntry), Update.Type.MODIFY);
-        try {
-            response = write(request);
-        } catch (StatusRuntimeException e) {
-            LOG.info("Modify table entry RPC exception, Status = {}, Reason = {}",
-                    e.getStatus(), e.getMessage());
-            throw new RuntimeException(e);
-        }
+        response = write(request);
         return response;
     }
 
     public WriteResponse deleteTableEntry(TableEntryKey inputEntryKey) {
         WriteResponse response;
         WriteRequest request = createWriteRequest(toProtoEntry(inputEntryKey), Update.Type.DELETE);
-        try {
-            response = write(request);
-        } catch (StatusRuntimeException e) {
-            LOG.info("Delete table entry RPC exception, Status = {}, Reason = {}",
-                    e.getStatus(), e.getMessage());
-            throw new RuntimeException(e);
-        }
+        response = write(request);
         return response;
     }
 
@@ -356,7 +346,7 @@ public class P4Device  {
         entryBuilder.setTableId(getTableId(tableName));
         entityBuilder.setTableEntry(entryBuilder);
         request.addEntities(entityBuilder);
-        request.setDeviceId(getDeviceId());
+        request.setDeviceId(deviceId);
 
         Iterator<ReadResponse> responses = read(request.build());
         List<java.lang.String> result = new ArrayList<>();
@@ -377,39 +367,21 @@ public class P4Device  {
     public WriteResponse addActionProfileMember(ActionProfileMember inputMember) {
         WriteResponse response;
         WriteRequest request = createWriteRequest(toProtoMember(inputMember), Update.Type.INSERT);
-        try {
-            response = write(request);
-        } catch (StatusRuntimeException e) {
-            LOG.info("Add action profile member RPC exception, Status = {}, Reason = {}",
-                    e.getStatus(), e.getMessage());
-            throw new RuntimeException(e);
-        }
+        response = write(request);
         return response;
     }
 
     public WriteResponse modifyActionProfileMember(ActionProfileMember inputMember) {
         WriteResponse response;
         WriteRequest request = createWriteRequest(toProtoMember(inputMember), Update.Type.MODIFY);
-        try {
-            response = write(request);
-        } catch (StatusRuntimeException e) {
-            LOG.info("Modify action profile member RPC exception, Status = {}, Reason = {}",
-                    e.getStatus(), e.getMessage());
-            throw new RuntimeException(e);
-        }
+        response = write(request);
         return response;
     }
 
     public WriteResponse deleteActionProfileMember(ActionProfileMemberKey inputMemberKey) {
         WriteResponse response;
         WriteRequest request = createWriteRequest(toProtoMember(inputMemberKey), Update.Type.DELETE);
-        try {
-            response = write(request);
-        } catch (StatusRuntimeException e) {
-            LOG.info("Delete action profile member RPC exception, Status = {}, Reason = {}",
-                    e.getStatus(), e.getMessage());
-            throw new RuntimeException(e);
-        }
+        response = write(request);
         return response;
     }
 
@@ -420,7 +392,7 @@ public class P4Device  {
                 org.opendaylight.p4plugin.p4runtime.proto.ActionProfileMember.newBuilder();
         memberBuilder.setActionProfileId(getActionProfileId(actionProfileName));
         entityBuilder.setActionProfileMember(memberBuilder);
-        requestBuilder.setDeviceId(getDeviceId());
+        requestBuilder.setDeviceId(deviceId);
         requestBuilder.addEntities(entityBuilder);
 
         Iterator<ReadResponse> responses = read(requestBuilder.build());
@@ -442,39 +414,21 @@ public class P4Device  {
     public WriteResponse addActionProfileGroup(ActionProfileGroup inputGroup) {
         WriteResponse response;
         WriteRequest request = createWriteRequest(toProtoGroup(inputGroup), Update.Type.INSERT);
-        try {
-            response = write(request);
-        } catch (StatusRuntimeException e) {
-            LOG.info("Add action profile group RPC exception, Status = {}, Reason = {}",
-                    e.getStatus(), e.getMessage());
-            throw new RuntimeException(e);
-        }
+        response = write(request);
         return response;
     }
 
     public WriteResponse modifyActionProfileGroup(ActionProfileGroup inputGroup) {
         WriteResponse response;
         WriteRequest request = createWriteRequest(toProtoGroup(inputGroup), Update.Type.MODIFY);
-        try {
-            response = write(request);
-        } catch (StatusRuntimeException e) {
-            LOG.info("Modify action profile group RPC exception, Status = {}, Reason = {}",
-                    e.getStatus(), e.getMessage());
-            throw new RuntimeException(e);
-        }
+        response = write(request);
         return response;
     }
 
     public WriteResponse deleteActionProfileGroup(ActionProfileGroupKey inputGroupKey) {
         WriteResponse response;
         WriteRequest request = createWriteRequest(toProtoGroup(inputGroupKey), Update.Type.DELETE);
-        try {
-            response = write(request);
-        } catch (StatusRuntimeException e) {
-            LOG.info("Delete action profile group RPC exception, Status = {}, Reason = {}",
-                    e.getStatus(), e.getMessage());
-            throw new RuntimeException(e);
-        }
+        response = write(request);
         return response;
     }
 
@@ -485,7 +439,7 @@ public class P4Device  {
                 org.opendaylight.p4plugin.p4runtime.proto.ActionProfileGroup.newBuilder();
         groupBuilder.setActionProfileId(getActionProfileId(actionProfileName));
         entityBuilder.setActionProfileGroup(groupBuilder);
-        requestBuilder.setDeviceId(getDeviceId());
+        requestBuilder.setDeviceId(deviceId);
         requestBuilder.addEntities(entityBuilder);
 
         Iterator<ReadResponse> responses = read(requestBuilder.build());
@@ -505,13 +459,13 @@ public class P4Device  {
     }
 
     public WriteResponse write(WriteRequest request) {
-        WriteResponse response = runtimeStub.getBlockingStub().write(request);
+        WriteResponse response = runtimeStub.write(request);
         return response;
     }
 
     public Iterator<ReadResponse> read(ReadRequest request) {
         Iterator<ReadResponse> responses;
-        responses = runtimeStub.getBlockingStub().read(request);
+        responses = runtimeStub.read(request);
         return responses;
     }
 
@@ -519,17 +473,14 @@ public class P4Device  {
         runtimeStub.transmitPacket(payload);
     }
 
-    public boolean connectToDevice() {
-        if (state == State.Unknown) {
-            return runtimeStub.connect();
+    public void connectToDevice() {
+        if (runtimeStub.getConnectState() == ConnectivityState.IDLE) {
+            runtimeStub.StreamChannel();
         }
-        return true;
     }
 
     public void shutdown() {
-        if (state != State.Unknown) {
-            runtimeStub.shutdown();
-        }
+        runtimeStub.shutdown();
     }
 
     private TableAction directActionParse(DIRECTACTION action) {
@@ -843,21 +794,8 @@ public class P4Device  {
         }
 
         public P4Device build() {
-            P4Device device = new P4Device();
-            device.deviceConfig = deviceConfig_;
-            device.deviceId = deviceId_;
-            device.nodeId = nodeId_;
-            device.ip = ip_;
-            device.port = port_;
-            device.runtimeInfo = runtimeInfo_;
-            device.runtimeStub = new P4RuntimeStub(device.nodeId, device.deviceId, device.ip, device.port);
+            P4Device device = new P4Device(ip_,port_,deviceId_, nodeId_, runtimeInfo_,deviceConfig_);
             return device;
         }
-    }
-
-    public enum State {
-        Unknown,
-        Connected,
-        Configured,
     }
 }

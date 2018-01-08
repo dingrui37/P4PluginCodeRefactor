@@ -11,7 +11,6 @@ package org.opendaylight.p4plugin.runtime.impl;
 import io.grpc.StatusRuntimeException;
 import org.opendaylight.controller.md.sal.binding.api.DataBroker;
 import org.opendaylight.controller.md.sal.binding.api.NotificationPublishService;
-import org.opendaylight.p4plugin.runtime.impl.channel.P4RuntimeChannel;
 import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
 import org.opendaylight.p4plugin.runtime.impl.utils.NotificationPublisher;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.*;
@@ -41,7 +40,6 @@ public class RuntimeServiceProvider implements P4pluginRuntimeService {
     }
 
     public void init() {
-        new P4RuntimeChannel("localhost", 50051).shutdown();//grpc bug
         NotificationPublisher.getInstance().setNotificationService(notificationPublishService);
         executorService = Executors.newFixedThreadPool(2);
         manager = DeviceManager.getInstance();
@@ -68,114 +66,138 @@ public class RuntimeServiceProvider implements P4pluginRuntimeService {
 
     private Callable<RpcResult<Void>> addEntry(AddTableEntryInput input) {
         return ()->{
-            manager.findConfiguredDevice(input.getNid())
+            String nodeId = input.getNid();
+            manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .addTableEntry(input);
+            LOG.info("Add entry to device = {} RPC success.", nodeId);
             return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> modifyEntry(ModifyTableEntryInput input) {
         return ()->{
-            manager.findConfiguredDevice(input.getNid())
+            String nodeId = input.getNid();
+            manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .modifyTableEntry(input);
+            LOG.info("Modify entry to device = {} RPC success.", nodeId);
             return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> deleteEntry(DeleteTableEntryInput input) {
         return ()->{
-            manager.findConfiguredDevice(input.getNid())
+            String nodeId = input.getNid();
+            manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .deleteTableEntry(input);
+            LOG.info("Delete entry from device = {} RPC success.", nodeId);
             return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> addMember(AddActionProfileMemberInput input) {
         return ()->{
-            manager.findConfiguredDevice(input.getNid())
+            String nodeId = input.getNid();
+            manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .addActionProfileMember(input);
+            LOG.info("Add member to device = {} RPC success.", nodeId);
             return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> modifyMember(ModifyActionProfileMemberInput input) {
         return ()->{
-            manager.findConfiguredDevice(input.getNid())
+            String nodeId = input.getNid();
+            manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .modifyActionProfileMember(input);
+            LOG.info("Modify member to device = {} RPC success.", nodeId);
             return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> deleteMember(DeleteActionProfileMemberInput input) {
         return ()->{
-            manager.findConfiguredDevice(input.getNid())
+            String nodeId = input.getNid();
+            manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .deleteActionProfileMember(input);
+            LOG.info("Delete member from device = {} RPC success.", nodeId);
             return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> addGroup(AddActionProfileGroupInput input) {
         return ()->{
-            manager.findConfiguredDevice(input.getNid())
+            String nodeId = input.getNid();
+            manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .addActionProfileGroup(input);
+            LOG.info("Add group to device = {} RPC success.", nodeId);
             return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> modifyGroup(ModifyActionProfileGroupInput input) {
         return ()->{
-            manager.findConfiguredDevice(input.getNid())
+            String nodeId = input.getNid();
+            manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .modifyActionProfileGroup(input);
+            LOG.info("Modify group to device = {} RPC success.", nodeId);
             return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<Void>> deleteGroup(DeleteActionProfileGroupInput input) {
         return ()->{
-            manager.findConfiguredDevice(input.getNid())
+            String nodeId = input.getNid();
+            manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .deleteActionProfileGroup(input);
+            LOG.info("Delete group from device = {} RPC success.", nodeId);
             return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<ReadTableEntryOutput>> readEntry(ReadTableEntryInput input) {
         return ()->{
+            String nodeId = input.getNid();
             ReadTableEntryOutputBuilder outputBuilder = new ReadTableEntryOutputBuilder();
-            List<String> result = manager.findConfiguredDevice(input.getNid())
+            List<String> result = manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .readTableEntry(input.getTableName());
             outputBuilder.setEntry(result);
+            LOG.info("Read entry from device = {} RPC success.", nodeId);
             return RpcResultBuilder.success(outputBuilder.build()).build();
         };
     }
 
     private Callable<RpcResult<ReadActionProfileMemberOutput>> readMember(ReadActionProfileMemberInput input) {
         return ()->{
+            String nodeId = input.getNid();
             ReadActionProfileMemberOutputBuilder outputBuilder = new ReadActionProfileMemberOutputBuilder();
-            List<String> result = manager.findConfiguredDevice(input.getNid())
+            List<String> result = manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .readActionProfileMember(input.getActionProfileName());
             outputBuilder.setMember(result);
+            LOG.info("Read member from device = {} RPC success.", nodeId);
             return RpcResultBuilder.success(outputBuilder.build()).build();
         };
     }
 
     private Callable<RpcResult<ReadActionProfileGroupOutput>> readGroup(ReadActionProfileGroupInput input) {
         return ()->{
+            String nodeId = input.getNid();
             ReadActionProfileGroupOutputBuilder outputBuilder = new ReadActionProfileGroupOutputBuilder();
-            List<String> result = manager.findConfiguredDevice(input.getNid())
+            List<String> result = manager.findConfiguredDevice(nodeId)
                     .orElseThrow(IllegalArgumentException::new)
                     .readActionProfileGroup(input.getActionProfileName());
             outputBuilder.setGroup(result);
+            LOG.info("Read group from device = {} RPC success.", nodeId);
             return RpcResultBuilder.success(outputBuilder.build()).build();
         };
     }

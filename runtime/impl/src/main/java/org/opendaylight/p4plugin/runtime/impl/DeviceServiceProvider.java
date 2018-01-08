@@ -8,10 +8,12 @@
 package org.opendaylight.p4plugin.runtime.impl;
 
 import com.google.protobuf.TextFormat;
+import io.grpc.ConnectivityState;
 import org.opendaylight.p4plugin.p4info.proto.P4Info;
 import org.opendaylight.p4plugin.runtime.impl.device.DeviceManager;
 import org.opendaylight.p4plugin.runtime.impl.device.P4Device;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.device.rev170808.*;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.runtime.rev170808.match.field.field.match.type.EXACT;
 import org.opendaylight.yangtools.yang.common.RpcResult;
 import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.slf4j.Logger;
@@ -49,7 +51,7 @@ public class DeviceServiceProvider implements P4pluginDeviceService {
             String runtimeFile = input.getRuntimeFilePath();
             String configFile = input.getConfigFilePath();
             manager.addDevice(nodeId, deviceId, ip, port, runtimeFile, configFile);
-            LOG.info("Add device = [{}-{}-{}:{}-{}-{}] success." , nodeId, deviceId, ip, port, runtimeFile, configFile);
+            LOG.info("Add device = [{}-{}-{}:{}-{}-{}] RPC success." , nodeId, deviceId, ip, port, runtimeFile, configFile);
             return rpcResultSuccess(null);
         };
     }
@@ -57,21 +59,27 @@ public class DeviceServiceProvider implements P4pluginDeviceService {
     private Callable<RpcResult<Void>> removeDev(RemoveDeviceInput input) {
         return ()->{
             manager.removeDevice(input.getNid());
+            LOG.info("Remove device = {} RPC success.", input.getNid());
             return rpcResultSuccess(null);
         };
     }
 
     private Callable<RpcResult<ConnectToDeviceOutput>> connectToDev(ConnectToDeviceInput input) {
         return ()->{
-            String nodeId = input.getNid();
-            Optional<P4Device> optional = manager.findDevice(nodeId);
-            Boolean connectStatus = optional.orElseThrow(IllegalArgumentException::new).connectToDevice();
-            P4Device.State state = connectStatus ? P4Device.State.Connected : P4Device.State.Unknown;
-            optional.get().setDeviceState(state);
-            LOG.info("Connect to device = [{}], connect status = [{}]." , nodeId, connectStatus);
-            ConnectToDeviceOutputBuilder outputBuilder = new ConnectToDeviceOutputBuilder();
-            outputBuilder.setConnectStatus(connectStatus);
-            return rpcResultSuccess(outputBuilder.build());
+            try {
+                String nodeId = input.getNid();
+                Optional<P4Device> optional = manager.findDevice(nodeId);
+                optional.orElseThrow(IllegalArgumentException::new).connectToDevice();
+                boolean connectStatus = optional.get().getConnectState() == ConnectivityState.READY;
+                LOG.info("Connect to device = {} RPC success, connect state = {}.", nodeId, connectStatus);
+                ConnectToDeviceOutputBuilder outputBuilder = new ConnectToDeviceOutputBuilder();
+                outputBuilder.setConnectStatus(connectStatus);
+                return rpcResultSuccess(outputBuilder.build());
+            } catch (Exception e) {
+                LOG.info("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ");
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
         };
     }
 
@@ -80,8 +88,7 @@ public class DeviceServiceProvider implements P4pluginDeviceService {
             String nodeId = input.getNid();
             Optional<P4Device> optional = manager.findDevice(nodeId);
             optional.orElseThrow(IllegalArgumentException::new).setPipelineConfig();
-            optional.get().setDeviceState(P4Device.State.Configured);
-            LOG.info("Set device = [{}] pipeline config success", nodeId);
+            LOG.info("Set device = {} pipeline config RPC success.", nodeId);
             return rpcResultSuccess(null);
         };
     }
@@ -97,6 +104,7 @@ public class DeviceServiceProvider implements P4pluginDeviceService {
             String result = TextFormat.printToString(p4info);
             GetPipelineConfigOutputBuilder outputBuilder = new GetPipelineConfigOutputBuilder();
             outputBuilder.setP4Info(result);
+            LOG.info("Get device = {} pipeline config RPC success.", nodeId);
             return rpcResultSuccess(outputBuilder.build());
         };
     }
@@ -105,6 +113,7 @@ public class DeviceServiceProvider implements P4pluginDeviceService {
         return ()->{
             QueryDevicesOutputBuilder outputBuilder = new QueryDevicesOutputBuilder();
             outputBuilder.setNode(manager.queryNodes());
+            LOG.info("Query devices RPC success.");
             return rpcResultSuccess(outputBuilder.build());
         };
     }

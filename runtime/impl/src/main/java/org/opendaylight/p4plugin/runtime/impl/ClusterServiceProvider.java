@@ -15,17 +15,20 @@ import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.cluster.rev170808.
 import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.cluster.rev170808.SetElectionIdInput;
 import org.opendaylight.yangtools.yang.common.RpcResult;
 import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.util.concurrent.Future;
 
 public class ClusterServiceProvider implements P4pluginClusterService {
-
+    private static final Logger LOG = LoggerFactory.getLogger(ClusterServiceProvider.class);
     @Override
     public Future<RpcResult<java.lang.Void>> setElectionId(SetElectionIdInput input) {
         long high = input.getHigh().longValue();
         long low = input.getLow().longValue();
         ElectionIdGenerator.getInstance().setElectionId(new ElectionId(high, low));
+        LOG.info("Set election ID RPC success, high = {}, low = {}.", high, low);
         return RpcResultBuilder.success((Void)null).buildFuture();
     }
 
@@ -36,6 +39,7 @@ public class ClusterServiceProvider implements P4pluginClusterService {
         GetElectionIdOutputBuilder builder = new GetElectionIdOutputBuilder();
         builder.setHigh(BigInteger.valueOf(electionId.getHigh()));
         builder.setLow(BigInteger.valueOf(electionId.getLow()));
+        LOG.info("Get election ID RPC success, high = {}, low = {}.", electionId.getHigh(), electionId.getLow());
         return RpcResultBuilder.success(builder.build()).buildFuture();
     }
 }
