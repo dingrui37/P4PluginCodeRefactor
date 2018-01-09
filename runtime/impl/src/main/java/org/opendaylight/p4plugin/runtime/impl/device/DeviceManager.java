@@ -92,7 +92,7 @@ public class DeviceManager {
         List<String> result = new ArrayList<>();
         devices.keySet().forEach(node->{
             P4Device device = devices.get(node);
-            result.add(device.getNodeId());
+            result.add(device.toString());
         });
         return result;
     }

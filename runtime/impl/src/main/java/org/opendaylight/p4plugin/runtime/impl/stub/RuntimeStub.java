@@ -20,6 +20,8 @@ import org.opendaylight.yang.gen.v1.urn.opendaylight.p4plugin.packet.rev170808.P
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Iterator;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class RuntimeStub implements ElectionIdObserver {
     private static final Logger LOG = LoggerFactory.getLogger(RuntimeStub.class);
@@ -58,8 +60,9 @@ public class RuntimeStub implements ElectionIdObserver {
         channel.notifyWhenStateChanged(source, callback);
     }
 
-    public ConnectivityState getConnectState() {
-        return channel.getState(true);
+    public boolean getConnectState() {
+        return channel.getState(true) == ConnectivityState.READY
+                && requestStreamObserver != null;
     }
 
     public void shutdown() {
@@ -108,10 +111,10 @@ public class RuntimeStub implements ElectionIdObserver {
                 onStreamChannelComplete();
             }
         };
+
         requestStreamObserver = asyncStub.streamChannel(responseStreamObserver);
         sendMasterArbitration(electionId);
-        //Wait tcp connect and retry
-        waitConnect((long)5000);
+        awaitConnection(5000);
     }
 
     public void transmitPacket(byte[] payload) {
@@ -203,9 +206,9 @@ public class RuntimeStub implements ElectionIdObserver {
         sendMasterArbitration(electionId);
     }
 
-    private void waitConnect(Long milliseconds) {
+    private void awaitConnection(long milliseconds) {
         try {
-            Thread.currentThread().sleep(milliseconds);
+            Thread.sleep(milliseconds);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);

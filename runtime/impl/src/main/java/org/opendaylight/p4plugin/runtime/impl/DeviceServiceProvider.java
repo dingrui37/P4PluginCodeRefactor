@@ -70,7 +70,7 @@ public class DeviceServiceProvider implements P4pluginDeviceService {
                 String nodeId = input.getNid();
                 Optional<P4Device> optional = manager.findDevice(nodeId);
                 optional.orElseThrow(IllegalArgumentException::new).connectToDevice();
-                boolean connectStatus = optional.get().getConnectState() == ConnectivityState.READY;
+                boolean connectStatus = optional.get().getConnectState();
                 LOG.info("Connect to device = {} RPC success, connect state = {}.", nodeId, connectStatus);
                 ConnectToDeviceOutputBuilder outputBuilder = new ConnectToDeviceOutputBuilder();
                 outputBuilder.setConnectStatus(connectStatus);

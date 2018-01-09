@@ -49,7 +49,6 @@ public class P4Device  {
     private Long deviceId;
     private String nodeId;
     private boolean isConfigured;
-    private boolean isConnected;
 
     private P4Device(String ip, Integer port, Long deviceId, String nodeId,
                      P4Info runtimeInfo, ByteString deviceConfig) {
@@ -59,18 +58,9 @@ public class P4Device  {
         this.nodeId = nodeId;
         this.runtimeInfo = runtimeInfo;
         this.deviceConfig = deviceConfig;
-        initRuntimeStub();
     }
 
-    private void initRuntimeStub() {
-        this.runtimeStub = new RuntimeStub(ip, port, deviceId, nodeId);
-        runtimeStub.notifyWhenStateChanged(ConnectivityState.READY, ()->{
-            isConnected = false;
-            isConfigured = false;
-        });
-    }
-
-    public ConnectivityState getConnectState() {
+    public boolean getConnectState() {
         return runtimeStub.getConnectState();
     }
 
@@ -474,9 +464,12 @@ public class P4Device  {
     }
 
     public void connectToDevice() {
-        if (runtimeStub.getConnectState() == ConnectivityState.IDLE) {
-            runtimeStub.StreamChannel();
+        if (runtimeStub != null) {
+            runtimeStub.shutdown();
         }
+        runtimeStub = new RuntimeStub(ip, port, deviceId, nodeId);
+        runtimeStub.notifyWhenStateChanged(ConnectivityState.READY, ()->isConfigured = false);
+        runtimeStub.StreamChannel();
     }
 
     public void shutdown() {
@@ -534,7 +527,7 @@ public class P4Device  {
         FieldMatch.Exact.Builder exactBuilder = FieldMatch.Exact.newBuilder();
         Integer matchFieldWidth = getMatchFieldWidth(tableName, fieldName);
         Integer matchFieldId = getMatchFieldId(tableName, fieldName);
-        String valueStr = new String(exact.getExactValue().getValue());
+        String valueStr = exact.getExactValue().getValue();
         byte[] valeBytes = Utils.strToByteArray(valueStr, matchFieldWidth);
         exactBuilder.setValue(ByteString.copyFrom(valeBytes, 0, matchFieldWidth));
         fieldMatchBuilder.setExact(exactBuilder);
@@ -544,13 +537,14 @@ public class P4Device  {
 
     private FieldMatch lpmMatchParse(LPM lpm, String tableName, String fieldName) {
         FieldMatch.Builder fieldMatchBuilder = FieldMatch.newBuilder();
-        FieldMatch.Exact.Builder exactBuilder = FieldMatch.Exact.newBuilder();
+        FieldMatch.LPM.Builder lpmBuilder = FieldMatch.LPM.newBuilder();
         Integer matchFieldWidth = getMatchFieldWidth(tableName, fieldName);
         Integer matchFieldId = getMatchFieldId(tableName, fieldName);
-        String valueStr = new String(lpm.getLpmValue().getValue());
+        String valueStr = lpm.getLpmValue().getValue();
         byte[] valeBytes = Utils.strToByteArray(valueStr, matchFieldWidth);
-        exactBuilder.setValue(ByteString.copyFrom(valeBytes, 0, matchFieldWidth));
-        fieldMatchBuilder.setExact(exactBuilder);
+        lpmBuilder.setValue(ByteString.copyFrom(valeBytes, 0, matchFieldWidth));
+        lpmBuilder.setPrefixLen(lpm.getPrefixLen().intValue());
+        fieldMatchBuilder.setLpm(lpmBuilder);
         fieldMatchBuilder.setFieldId(matchFieldId);
         return fieldMatchBuilder.build();
     }
@@ -797,5 +791,11 @@ public class P4Device  {
             P4Device device = new P4Device(ip_,port_,deviceId_, nodeId_, runtimeInfo_,deviceConfig_);
             return device;
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s/%d-%s:%d/%s/%s", nodeId, deviceId, ip, port,
+                getConnectState(), isConfigured);
     }
 }
