@@ -112,7 +112,7 @@ public class DeviceServiceProvider implements P4pluginDeviceService {
     private Callable<RpcResult<QueryDevicesOutput>> queryDevs() {
         return ()->{
             QueryDevicesOutputBuilder outputBuilder = new QueryDevicesOutputBuilder();
-            outputBuilder.setNode(manager.queryNodes());
+            outputBuilder.setNode(manager.queryDevices());
             LOG.info("Query devices RPC success.");
             return rpcResultSuccess(outputBuilder.build());
         };

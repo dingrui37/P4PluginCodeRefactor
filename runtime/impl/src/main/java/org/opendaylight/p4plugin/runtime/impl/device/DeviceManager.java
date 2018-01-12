@@ -88,7 +88,7 @@ public class DeviceManager {
         }
     }
 
-    public List<String> queryNodes() {
+    public List<String> queryDevices() {
         List<String> result = new ArrayList<>();
         devices.keySet().forEach(node->{
             P4Device device = devices.get(node);
